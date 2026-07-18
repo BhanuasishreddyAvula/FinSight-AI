@@ -1,0 +1,82 @@
+/* design-system.css - Ember Void Design Tokens */
+
+:root {
+    /* Color Tokens (Ember Void Palette) */
+    --color-void: #0F0D0A;                 /* Deep Espresso background */
+    --color-glass-bg: rgba(26, 20, 15, 0.6); /* Glass surface */
+    --color-glass-solid: #1E1B18;          /* Solid fallback for glass */
+    --color-amber-primary: #D4AF37;        /* Primary Gold/Ember */
+    --color-copper-secondary: #C1601F;     /* Secondary Copper accent */
+    --color-text-primary: #F3EAE0;         /* Parchment primary text */
+    --color-text-secondary: #A6927D;       /* Taupe secondary text */
+    --color-border-hairline: rgba(232, 163, 61, 0.15); /* Panel borders */
+    --color-border-focus: rgba(232, 163, 61, 0.4);
+    --color-outline-variant: #514536;      /* Dim outline color */
+    --color-error: #FFB4AB;                /* Error accent */
+    --color-success: #6FCF97;              /* Success accent */
+
+    /* Typography Hierarchy */
+    --font-headline: 'Fraunces', Georgia, serif;
+    --font-body: 'Plus Jakarta Sans', system-ui, sans-serif;
+
+
+    /* Spacing Scale */
+    --spacing-xs: 4px;
+    --spacing-sm: 12px;
+    --spacing-base: 8px;
+    --spacing-md: 24px;
+    --spacing-lg: 48px;
+    --spacing-xl: 80px;
+
+    /* Border Radii */
+    --radius-panel: 24px;
+    --radius-card: 16px;
+    --radius-input: 9999px;
+    --radius-pill: 9999px;
+    --radius-focus: 8px;
+}
+
+/* Base resets & theme styles */
+body {
+    background-color: var(--color-void);
+    color: var(--color-text-primary);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    margin: 0;
+    padding: 0;
+}
+
+/* Glassmorphism utility panel */
+.glass-panel {
+    background: var(--color-glass-bg);
+    backdrop-filter: blur(40px);
+    -webkit-backdrop-filter: blur(40px);
+    border: 1px solid var(--color-border-hairline);
+}
+
+/* Custom Scrollbars */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(232, 163, 61, 0.2);
+    border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(232, 163, 61, 0.4);
+}
+
+/* Typography Classes */
+.font-headline {
+    font-family: var(--font-headline) !important;
+}
+.font-body {
+    font-family: var(--font-body) !important;
+}
+.font-mono {
+    font-family: var(--font-body) !important;
+}

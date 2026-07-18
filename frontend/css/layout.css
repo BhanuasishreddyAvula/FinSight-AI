@@ -1,0 +1,616 @@
+body {
+    display: grid !important;
+    grid-template-columns: var(--left-sidebar-width, clamp(240px, 18vw, 300px)) 1fr var(--right-sidebar-width, clamp(240px, 18vw, 300px));
+    height: 100vh;
+    overflow: hidden;
+    transition: grid-template-columns 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    background-color: var(--color-void);
+}
+
+body.left-collapsed {
+    --left-sidebar-width: 60px;
+}
+
+body.right-collapsed {
+    --right-sidebar-width: 60px;
+}
+
+/* ═══════════════════════════════════════════════
+   1. Left Sidebar (SideNavBar) — Claude-style
+   ═══════════════════════════════════════════════ */
+aside.sidebar {
+    grid-column: 1;
+    width: 100%;
+    height: 100vh;
+    position: relative;
+    z-index: 50;
+    transition: padding 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+    background: #1C1C1C;
+    border-right: 1px solid #2E2E2E;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+/* ═══════════════════════════════════════════════
+   Right Sidebar (Context & Health)
+   ═══════════════════════════════════════════════ */
+aside.right-sidebar {
+    grid-column: 3;
+    width: 100%;
+    height: 100vh;
+    position: relative;
+    z-index: 50;
+    transition: padding 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+    background: #1C1C1C;
+    border-left: 1px solid #2E2E2E;
+}
+
+/* ═══════════════════════════════════════════════
+   Collapsed State
+   ═══════════════════════════════════════════════ */
+/* Width is now fully controlled by body grid variables */
+
+/* Hide scrollbar in collapsed mode to prevent 6px width shrink */
+aside.sidebar.collapsed nav::-webkit-scrollbar,
+aside.right-sidebar.collapsed .custom-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+
+aside.sidebar.collapsed nav,
+aside.right-sidebar.collapsed .custom-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+/* Hide labels in collapsed */
+aside.sidebar.collapsed .sidebar-label,
+aside.sidebar.collapsed .sidebar-text,
+aside.sidebar.collapsed .sidebar-footer-text,
+aside.sidebar.collapsed .delete-doc-btn,
+aside.right-sidebar.collapsed .sidebar-label,
+aside.right-sidebar.collapsed .sidebar-text,
+aside.right-sidebar.collapsed .sidebar-footer-text,
+aside.right-sidebar.collapsed .delete-doc-btn,
+aside.right-sidebar.collapsed .text-xs,
+aside.right-sidebar.collapsed .text-\[11px\],
+aside.right-sidebar.collapsed .text-lg,
+aside.right-sidebar.collapsed .text-\[9px\] {
+    display: none !important;
+}
+
+/* Maintain vertical space for headings, but invisible */
+aside.sidebar.collapsed .sidebar-heading,
+aside.right-sidebar.collapsed .sidebar-heading {
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
+/* Prevent text wrapping during width transitions */
+aside.sidebar .sidebar-label,
+aside.sidebar .sidebar-text,
+aside.sidebar .sidebar-footer-text,
+aside.sidebar .sidebar-heading,
+aside.right-sidebar .sidebar-label,
+aside.right-sidebar .sidebar-text,
+aside.right-sidebar .sidebar-footer-text,
+aside.right-sidebar .sidebar-heading {
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+/* Hide recent history header and list when sidebar is collapsed */
+aside.sidebar.collapsed .sidebar-heading,
+aside.sidebar.collapsed #sidebar-history-container {
+    display: none !important;
+}
+
+/* ═══════════════════════════════════════════════
+   Inline Recents (Chat History) Styles
+   ═══════════════════════════════════════════════ */
+.sidebar-history-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: transparent;
+    color: #A3A3A3;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+    position: relative;
+    margin: 1px 0;
+    border: 1px solid transparent;
+}
+
+.sidebar-history-item:hover {
+    background-color: #2A2A2A;
+    color: #E5E5E5;
+}
+
+.sidebar-history-item.active {
+    background-color: #2A2A2A;
+    color: #E5E5E5;
+    border-color: transparent;
+}
+
+.sidebar-history-item-text {
+    flex-grow: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding-right: 8px;
+}
+
+.sidebar-history-delete-btn {
+    opacity: 0;
+    color: #666666;
+    transition: opacity 0.2s ease, color 0.2s ease, background-color 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.sidebar-history-item:hover .sidebar-history-delete-btn {
+    opacity: 1;
+}
+
+.sidebar-history-delete-btn:hover {
+    color: #EF4444;
+    background-color: rgba(239, 68, 68, 0.15);
+}
+
+/* ── Collapsed: Upload button circle ── */
+aside.sidebar.collapsed #open-upload-btn .upload-btn-bg {
+    width: 24px !important;
+    height: 24px !important;
+    left: 6px !important;
+    border-radius: 50% !important;
+}
+
+aside.sidebar.collapsed #open-upload-btn .material-symbols-outlined {
+    font-size: 18px !important;
+    margin-left: 1px;
+}
+
+/* ── Focus States ── */
+aside.sidebar button:focus-visible {
+    outline: 2px solid rgba(255, 255, 255, 0.3);
+    outline-offset: 2px;
+    border-radius: 8px;
+}
+
+aside.sidebar .sidebar-toggle-btn:focus-visible {
+    outline: 2px solid rgba(255, 255, 255, 0.3);
+    outline-offset: 2px;
+    border-radius: 8px;
+}
+
+
+
+/* Toggle icon smooth opacity transition */
+aside.sidebar .sidebar-toggle-btn span {
+    transition: opacity 125ms ease;
+}
+
+/* ── Collapsed: Footer button — centered ── */
+aside.sidebar.collapsed .sidebar-footer button,
+aside.right-sidebar.collapsed .sidebar-footer button {
+    justify-content: center !important;
+    width: 36px !important;
+    height: 36px !important;
+    padding: 0 !important;
+}
+
+/* Footer border */
+aside.sidebar.collapsed .sidebar-footer,
+aside.right-sidebar.collapsed .sidebar-footer {
+    border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+    background: transparent !important;
+    transition: none !important;
+}
+
+
+/* ═══════════════════════════════════════════════
+   Scrollbar Control
+   ═══════════════════════════════════════════════ */
+
+aside.sidebar.collapsed nav::-webkit-scrollbar {
+    display: none;
+}
+
+aside.sidebar.collapsed nav {
+    scrollbar-width: none;
+    overflow-y: hidden !important;
+}
+
+/* During transition — prevent scrollbar flash */
+aside.sidebar nav.transitioning {
+    scrollbar-width: none;
+    overflow-y: hidden !important;
+}
+
+aside.sidebar nav.transitioning::-webkit-scrollbar {
+    display: none;
+}
+
+/* ═══════════════════════════════════════════════
+   Tooltips — collapsed mode
+   ═══════════════════════════════════════════════ */
+.sidebar-tooltip {
+    position: fixed;
+    background: #2d2d2d;
+    color: #e5e5e5;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    font-weight: 500;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 200;
+    opacity: 0;
+    transform: translateX(8px);
+    transition: opacity 150ms ease, transform 150ms ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sidebar-tooltip.visible {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+/* ═══════════════════════════════════════════════
+   Diagnostics Tab Navigation - Horizontal with Glider
+   ═══════════════════════════════════════════════ */
+.diag-tab-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-evenly;
+    position: relative;
+}
+
+.diag-tab-container input[type="radio"] {
+    display: none;
+}
+
+.diag-tab-container label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 16px;
+    cursor: pointer;
+    color: #888;
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    transition: color 200ms ease;
+    position: relative;
+    z-index: 2;
+    user-select: none;
+    flex: 1;
+}
+
+.diag-tab-container label:hover {
+    color: #b8b8b8;
+}
+
+.diag-tab-container input[type="radio"]:checked+label {
+    color: #D4AF37;
+}
+
+.diag-tab-container .glider-container {
+    position: absolute;
+    bottom: 0;
+    left: 6px;
+    width: calc(100% - 12px);
+    height: 100%;
+    z-index: 1;
+    pointer-events: none;
+}
+
+.diag-tab-container .glider {
+    position: absolute;
+    bottom: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #D4AF37, transparent);
+    box-shadow: 0 0 12px rgba(212, 175, 55, 0.8), 0 0 24px rgba(212, 175, 55, 0.5), 0 -2px 8px rgba(212, 175, 55, 0.4);
+    transition: all 400ms cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 2px;
+}
+
+/* Glider positioning based on checked radio - calculated dynamically */
+.diag-tab-container input[type="radio"]:nth-of-type(1):checked~.glider-container .glider {
+    left: calc(8.33% + 11px);
+    width: 16.67%;
+}
+
+.diag-tab-container input[type="radio"]:nth-of-type(2):checked~.glider-container .glider {
+    left: calc(41.67% + 11px);
+    width: 16.67%;
+}
+
+.diag-tab-container input[type="radio"]:nth-of-type(3):checked~.glider-container .glider {
+    left: calc(75% + 11px);
+    width: 16.67%;
+}
+
+/* Tab content animations & layout constraints */
+.diag-tab-content {
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+    animation: slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.diag-tab-content.hidden {
+    display: none;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ═══════════════════════════════════════════════
+   Document & Chunk Cards - Interactive Explorer
+   ═══════════════════════════════════════════════ */
+
+/* Document List Item */
+.diag-doc-item {
+    display: flex;
+    flex-direction: column;
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    cursor: pointer;
+    transition: all 200ms ease;
+}
+
+.diag-doc-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(212, 175, 55, 0.3);
+}
+
+.diag-doc-item.active {
+    background: rgba(212, 175, 55, 0.1);
+    border-color: rgba(212, 175, 55, 0.5);
+    border-left: 3px solid #D4AF37;
+}
+
+/* Chunk Card - Glass Morphism without Glow */
+.chunk-card {
+    background: rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(212, 175, 55, 0.4);
+    border-radius: 12px;
+    padding: 16px;
+    transition: all 200ms ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.chunk-card.expanded {
+    background: rgba(212, 175, 55, 0.08);
+    border-color: rgba(212, 175, 55, 0.6);
+}
+
+/* Chunk Header */
+.chunk-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.chunk-number {
+    font-size: 10px;
+    font-weight: 600;
+    color: #D4AF37;
+    font-family: var(--font-body);
+    letter-spacing: 0.5px;
+}
+
+/* Chunk Text - Italic Style */
+.chunk-text {
+    font-style: italic;
+    font-size: 13px;
+    line-height: 1.6;
+    color: #d4d4d4;
+    font-family: 'Georgia', 'Times New Roman', serif;
+}
+
+.chunk-text.preview {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.chunk-text.full {
+    -webkit-line-clamp: unset;
+    line-clamp: unset;
+    overflow: visible;
+}
+
+/* See More Button */
+.chunk-see-more {
+    margin-top: 8px;
+    font-size: 11px;
+    color: #D4AF37;
+    font-weight: 600;
+    display: inline-block;
+    transition: all 200ms ease;
+    cursor: pointer;
+    align-self: flex-end;
+}
+
+.chunk-see-more:hover {
+    color: #E5C158;
+}
+
+.chunk-card-content {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Chunk Metadata */
+.chunk-meta {
+    font-size: 10px;
+    color: #888;
+    font-family: var(--font-body);
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* ═══════════════════════════════════════════════
+   2. Main Content Canvas
+   ═══════════════════════════════════════════════ */
+main.content-canvas {
+    grid-column: 2;
+    width: 100%;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    background-color: #171717;
+}
+
+/* ═══════════════════════════════════════════════
+   Header & Nav
+   ═══════════════════════════════════════════════ */
+header.app-header {
+    height: 56px;
+    width: 100%;
+    padding: 0 20px;
+    background: rgba(23, 23, 23, 0.9);
+    backdrop-filter: blur(20px);
+    z-index: 40;
+}
+
+@media (min-width: 1024px) {
+    header.app-header {
+        display: none !important;
+    }
+}
+
+/* ═══════════════════════════════════════════════
+   Composer Container
+   ═══════════════════════════════════════════════ */
+.composer-container {
+    position: absolute;
+    bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+    left: 0;
+    right: 0;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    padding: 0 var(--spacing-md);
+    z-index: 40;
+}
+
+/* ═══════════════════════════════════════════════
+   Responsive Overrides
+   ═══════════════════════════════════════════════ */
+@media (max-width: 1024px) {
+    body {
+        grid-template-columns: 1fr !important;
+    }
+    
+    #tablet-tab-nav {
+        display: flex !important;
+    }
+
+    /* Main canvas is ALWAYS visible and takes full width */
+    main.content-canvas {
+        grid-column: 1 / -1 !important;
+        width: 100% !important;
+        display: flex !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+    
+    .composer-container {
+        left: 0 !important;
+        right: 0 !important;
+    }
+
+    /* Sidebars become fixed overlays */
+    aside.sidebar,
+    aside.right-sidebar {
+        position: fixed !important;
+        top: 0;
+        bottom: 0;
+        height: 100vh;
+        z-index: 100 !important;
+        width: 320px !important;
+        max-width: 85vw !important;
+        display: flex !important;
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
+
+    aside.sidebar {
+        left: 0;
+        transform: translateX(-100%);
+    }
+
+    aside.right-sidebar {
+        right: 0;
+        transform: translateX(100%);
+    }
+
+    /* Hide old toggle buttons on tablet/mobile */
+    .sidebar-toggle-btn { display: none !important; }
+
+    /* Active Tab Visibility via Transforms and Backdrop */
+    body[data-active-tab="sidebar"] aside.sidebar { transform: translateX(0) !important; }
+    body[data-active-tab="right-sidebar"] aside.right-sidebar { transform: translateX(0) !important; }
+    
+    body[data-active-tab="sidebar"] #tablet-sidebar-backdrop,
+    body[data-active-tab="right-sidebar"] #tablet-sidebar-backdrop {
+        opacity: 1 !important;
+        pointer-events: auto !important;
+    }
+
+    /* Hide tooltips on tablet/mobile since touch interactions don't use hover */
+    .sidebar-tooltip {
+        display: none !important;
+    }
+}
+
+/* ═══════════════════════════════════════════════
+   Responsive Overrides (Mobile View < 768px)
+   ═══════════════════════════════════════════════ */
+@media (max-width: 768px) {
+    /* Hide the floating tab nav on small screens */
+    #tablet-tab-nav {
+        display: none !important;
+    }
+    
+    /* Show the mobile header buttons (Menu & Docs) */
+    .mobile-nav-btn {
+        display: flex !important;
+    }
+}

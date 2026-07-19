@@ -1,4 +1,4 @@
-pinecone-client           # Pinecone Python SDK
+pinecone                  # Pinecone Python SDK
 pinecone-text             # BM25Encoder for sparse vectors (hybrid search)
 supabase
 fastapi

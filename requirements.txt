@@ -11,5 +11,5 @@ voyageai
 cohere
 groq
 slowapi
-pymupdf4llm               # High-quality lightweight PDF to Markdown parser
+pypdf                     # Lightweight PDF parsing
 tiktoken                  # Token counting for chunk sizing (recursive_chunker.py)

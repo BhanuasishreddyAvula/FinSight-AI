@@ -53,7 +53,9 @@
 
 
 
-    <div id="tablet-sidebar-backdrop" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[90] opacity-0 pointer-events-none transition-opacity duration-300"></div>
+    <div id="tablet-sidebar-backdrop"
+        class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[90] opacity-0 pointer-events-none transition-opacity duration-300">
+    </div>
 
     <aside id="app-sidebar" class="sidebar flex flex-col p-3">
         <!-- Brand / Header -->
@@ -115,18 +117,21 @@
             class="absolute top-3 right-4 z-[90] flex flex-col gap-2 pointer-events-none max-w-[320px] w-full items-end">
         </div>
         <!-- Top Header Navigation Bar (Tablet/Mobile) -->
-        <header class="app-header flex lg:hidden justify-between items-center w-full h-[56px] absolute top-0 left-0 z-40 px-4">
-            
+        <header
+            class="app-header flex lg:hidden justify-between items-center w-full h-[56px] absolute top-0 left-0 z-40 px-4">
+
             <!-- Left: Mobile Menu Toggle -->
             <div class="flex items-center justify-start">
-                <button class="mobile-nav-btn text-gray-400 hover:text-white transition-colors" onclick="document.body.setAttribute('data-active-tab', 'sidebar')">
+                <button class="mobile-nav-btn text-gray-400 hover:text-white transition-colors"
+                    onclick="document.body.setAttribute('data-active-tab', 'sidebar')">
                     <span class="material-symbols-outlined text-[24px]">sort</span>
                 </button>
             </div>
-            
+
             <!-- Right: Mobile Docs Toggle -->
             <div class="flex items-center justify-end">
-                <button class="mobile-nav-btn text-gray-400 hover:text-white transition-colors" onclick="document.body.setAttribute('data-active-tab', 'right-sidebar')">
+                <button class="mobile-nav-btn text-gray-400 hover:text-white transition-colors"
+                    onclick="document.body.setAttribute('data-active-tab', 'right-sidebar')">
                     <span class="material-symbols-outlined text-[24px]">library_books</span>
                 </button>
             </div>
@@ -161,8 +166,8 @@
                     class="hidden m-auto text-center flex-col items-center max-w-[560px] w-full transition-all duration-700 animate-in fade-in slide-in-from-bottom-8">
 
                     <!-- Icon -->
-                    <img src="/static/favicon.png" alt="FinSight AI" class="mb-4 md:mb-7 w-16 h-16 md:w-20 md:h-20 rounded-2xl select-none"
-                        draggable="false" />
+                    <img src="./FinSight AI.png" alt="FinSight AI"
+                        class="mb-4 md:mb-7 w-16 h-16 md:w-20 md:h-20 rounded-2xl select-none" draggable="false" />
 
                     <!-- Title -->
                     <h2 class="text-[24px] md:text-[30px] font-headline font-semibold mb-2 md:mb-3 tracking-tight">
@@ -474,7 +479,8 @@
 
     <!-- 4.5 Diagnostics Modal -->
     <div id="diagnostics-modal" class="overlay-blur hidden">
-        <div class="modal-card max-w-[820px] w-[95%] md:w-full h-[90vh] md:h-[580px] flex flex-col p-0 overflow-hidden relative">
+        <div
+            class="modal-card max-w-[820px] w-[95%] md:w-full h-[90vh] md:h-[580px] flex flex-col p-0 overflow-hidden relative">
             <!-- Header with Title and Close Button -->
             <div
                 class="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-gradient-to-b from-black/40 to-transparent shrink-0">
@@ -497,7 +503,8 @@
             </div>
 
             <!-- Horizontal Tab Navigation with Glider -->
-            <div class="diag-tab-container mx-4 md:mx-6 mt-4 mb-2 p-1.5 border border-white/10 bg-black/40 rounded-xl shadow-lg shrink-0 backdrop-blur-sm overflow-x-auto whitespace-nowrap hide-scrollbar">
+            <div
+                class="diag-tab-container mx-4 md:mx-6 mt-4 mb-2 p-1.5 border border-white/10 bg-black/40 rounded-xl shadow-lg shrink-0 backdrop-blur-sm overflow-x-auto whitespace-nowrap hide-scrollbar">
                 <input checked="" id="tab-overview" name="diag-tab-radio" type="radio" data-tab="overview" />
                 <label for="tab-overview">
                     <span class="material-symbols-outlined text-[16px]">dashboard</span>
@@ -525,7 +532,8 @@
             <div class="flex-grow bg-void/40 flex flex-col relative overflow-hidden">
 
                 <!-- Tab Content: Overview -->
-                <div class="diag-tab-content active flex flex-col justify-start h-full p-6 overflow-y-auto custom-scrollbar" data-content="overview">
+                <div class="diag-tab-content active flex flex-col justify-start h-full p-6 overflow-y-auto custom-scrollbar"
+                    data-content="overview">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
 
                         <!-- Session & Stats -->
@@ -545,7 +553,8 @@
                                         class="flex items-center justify-between bg-black/40 border border-amber/10 hover:border-amber/30 rounded-xl px-4 py-3 text-xs text-white font-mono backdrop-blur-sm transition-all duration-300 group">
                                         <span id="diag-session-id" class="truncate mr-3 diag-skeleton">
                                             <!-- Skeleton loader -->
-                                            <span class="inline-block bg-white/10 rounded animate-pulse w-48 h-3"></span>
+                                            <span
+                                                class="inline-block bg-white/10 rounded animate-pulse w-48 h-3"></span>
                                         </span>
                                         <button
                                             onclick="navigator.clipboard.writeText(App.sessionId); App.showToast('Session ID copied', 'success');"
@@ -563,11 +572,14 @@
                                     <div
                                         class="flex justify-between items-center bg-black/45 border border-amber/10 rounded-xl px-4 py-2.5 text-xs font-mono backdrop-blur-sm hover:border-amber/20 transition-all duration-300">
                                         <div class="flex items-center gap-2">
-                                            <span class="material-symbols-outlined text-[18px] text-amber">description</span>
-                                            <span class="text-amber/80 uppercase tracking-wider text-[9px] font-bold">Uploaded
+                                            <span
+                                                class="material-symbols-outlined text-[18px] text-amber">description</span>
+                                            <span
+                                                class="text-amber/80 uppercase tracking-wider text-[9px] font-bold">Uploaded
                                                 Contexts</span>
                                         </div>
-                                        <span id="diag-doc-count" class="text-amber font-bold text-[20px] font-mono diag-counter"
+                                        <span id="diag-doc-count"
+                                            class="text-amber font-bold text-[20px] font-mono diag-counter"
                                             data-target="0">0</span>
                                     </div>
                                 </div>
@@ -592,7 +604,8 @@
                                     class="bg-black/35 rounded-xl p-3 border border-white/5 hover:border-white/10 transition-colors">
                                     <div class="flex items-center gap-1.5 mb-1.5">
                                         <span class="material-symbols-outlined text-[15px] text-blue-400">dns</span>
-                                        <span class="text-[9px] text-gray-400 font-mono uppercase tracking-wider">Backend</span>
+                                        <span
+                                            class="text-[9px] text-gray-400 font-mono uppercase tracking-wider">Backend</span>
                                     </div>
                                     <div id="backend-status" class="text-[12px] text-green-400 font-semibold font-mono">
                                         Connected</div>
@@ -604,9 +617,11 @@
                                     <div class="flex items-center gap-1.5 mb-1.5">
                                         <span
                                             class="material-symbols-outlined text-[15px] text-purple-400">database</span>
-                                        <span class="text-[9px] text-gray-400 font-mono uppercase tracking-wider">Vector DB</span>
+                                        <span class="text-[9px] text-gray-400 font-mono uppercase tracking-wider">Vector
+                                            DB</span>
                                     </div>
-                                    <div id="vectordb-status" class="text-[12px] text-green-400 font-semibold font-mono">
+                                    <div id="vectordb-status"
+                                        class="text-[12px] text-green-400 font-semibold font-mono">
                                         Active</div>
                                 </div>
 
@@ -628,7 +643,8 @@
                             <div class="flex items-center justify-between mb-4 relative z-10">
                                 <h3 class="text-[10px] text-white/80 font-mono uppercase tracking-widest font-bold">
                                     Quick Stats</h3>
-                                <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber/10 border border-amber/20">
+                                <div
+                                    class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber/10 border border-amber/20">
                                     <span class="material-symbols-outlined text-[12px] text-amber">analytics</span>
                                     <span class="text-[9px] text-amber font-mono font-bold">METRICS</span>
                                 </div>
@@ -662,7 +678,8 @@
                                     class="bg-black/35 rounded-xl p-3 border border-white/5 hover:border-white/10 transition-colors col-span-1 md:col-span-2 flex items-center justify-between">
                                     <div class="flex items-center gap-2">
                                         <span class="material-symbols-outlined text-[16px] text-amber">info</span>
-                                        <span class="text-[11px] text-taupe font-headline italic">Real-time telemetry</span>
+                                        <span class="text-[11px] text-taupe font-headline italic">Real-time
+                                            telemetry</span>
                                     </div>
                                     <span class="text-[9px] text-amber font-mono uppercase font-semibold">Active</span>
                                 </div>
@@ -673,7 +690,8 @@
                 </div>
 
                 <!-- Tab Content: Documents -->
-                <div class="diag-tab-content hidden flex flex-col md:flex-row h-full overflow-hidden" data-content="documents">
+                <div class="diag-tab-content hidden flex flex-col md:flex-row h-full overflow-hidden"
+                    data-content="documents">
                     <!-- Left: Document List Sidebar -->
                     <div
                         class="w-full md:w-[240px] md:border-r border-b md:border-b-0 border-white/10 p-4 flex flex-col gap-3 shrink-0 overflow-y-auto custom-scrollbar md:max-h-full max-h-[40%]">
@@ -704,7 +722,8 @@
                 </div>
 
                 <!-- Tab Content: Performance -->
-                <div class="diag-tab-content hidden flex flex-col justify-between h-full p-6" data-content="performance">
+                <div class="diag-tab-content hidden flex flex-col justify-between h-full p-6"
+                    data-content="performance">
                     <div class="grid grid-cols-2 gap-4 w-full">
                         <!-- Card 1: Embedding Latency -->
                         <div class="performance-metric-card group">

@@ -11,7 +11,6 @@ Backward compatible: old chunks without the new fields work fine —
 they just won't participate in parent-expansion (graceful degradation).
 """
 from pinecone import Pinecone
-from pinecone_text.sparse import BM25Encoder
 
 from core.config import (
     PINECONE_API_KEY,
@@ -24,7 +23,6 @@ from core.config import (
 # ── Singleton clients ─────────────────────────────────────────────────────────
 _pc: Pinecone | None = None
 _index = None
-_bm25: BM25Encoder | None = None
 
 
 def _get_pinecone():
@@ -33,17 +31,6 @@ def _get_pinecone():
         _pc = Pinecone(api_key=PINECONE_API_KEY)
         _index = _pc.Index(PINECONE_INDEX_NAME)
     return _index
-
-
-def _get_bm25() -> BM25Encoder:
-    """
-    Return a default (pre-trained on MS MARCO) BM25Encoder.
-    Stateless — survives server restarts.
-    """
-    global _bm25
-    if _bm25 is None:
-        _bm25 = BM25Encoder().default()
-    return _bm25
 
 
 # ── Public API ─────────────────────────────────────────────────────────────────
@@ -75,18 +62,13 @@ def upsert_chunks(
         Number of vectors upserted.
     """
     index = _get_pinecone()
-    bm25 = _get_bm25()
-
-    texts = [c["text"] for c in chunks]
-    sparse_vectors = bm25.encode_documents(texts)
 
     vectors = []
-    for i, (chunk, dense, sparse) in enumerate(zip(chunks, dense_vectors, sparse_vectors)):
+    for i, (chunk, dense) in enumerate(zip(chunks, dense_vectors)):
         vector_id = f"{doc_id}-{chunk['chunk_index']}"
         vectors.append({
             "id": vector_id,
             "values": dense,
-            "sparse_values": sparse,
             "metadata": {
                 # Core fields (backward compatible)
                 "text": chunk["text"],
@@ -137,20 +119,9 @@ def hybrid_query(
         List of match dicts with enriched metadata.
     """
     index = _get_pinecone()
-    bm25 = _get_bm25()
-
-    sparse_vector = bm25.encode_queries(query_text)
-
-    # Scale vectors by alpha for hybrid weighting
-    scaled_dense = [v * alpha for v in dense_vector]
-    scaled_sparse = {
-        "indices": sparse_vector["indices"],
-        "values": [v * (1 - alpha) for v in sparse_vector["values"]],
-    }
 
     result = index.query(
-        vector=scaled_dense,
-        sparse_vector=scaled_sparse,
+        vector=dense_vector,
         top_k=top_k,
         namespace=session_id,
         include_metadata=True,

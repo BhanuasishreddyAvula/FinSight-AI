@@ -50,8 +50,9 @@ CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 BASE_DIR = os.path.dirname(CURRENT_DIR)
 FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
 
-# Serve the frontend static files
-app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
+# Serve the frontend static files natively
+app.mount("/css", StaticFiles(directory=os.path.join(FRONTEND_DIR, "css")), name="css")
+app.mount("/js", StaticFiles(directory=os.path.join(FRONTEND_DIR, "js")), name="js")
 
 
 @app.get("/", include_in_schema=False)

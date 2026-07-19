@@ -2,8 +2,10 @@
 
 // Global Application State Namespace
 const App = {
-    // API Configurations
-    apiBase: window.FINSIGHT_API_BASE || window.location.origin,
+    // API Configurations - Auto-detect local vs cloud
+    apiBase: (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
+        ? window.location.origin 
+        : "https://finsight-ai-5nnb.onrender.com",
     config: {
         default_top_k: 5,
         default_alpha: 0.7,

@@ -27,7 +27,7 @@ MIME_MAP = {
 
 @router.post("/upload", response_model=UploadResponse)
 @limiter.limit(lambda: RATE_LIMIT_UPLOADS)
-async def upload_document(
+def upload_document(
     request: Request,
     file: UploadFile = File(...),
     session_id: str = Form(...),
@@ -50,8 +50,9 @@ async def upload_document(
             detail=f"Unsupported file type '{ext}'. Allowed: {', '.join(ALLOWED_EXTENSIONS)}",
         )
 
-    # Read file bytes asynchronously to avoid blocking the event loop
-    file_bytes = await file.read()
+    # Read file bytes synchronously so FastAPI runs this route in an external threadpool
+    # (prevents blocking the main event loop and failing Render's health checks)
+    file_bytes = file.file.read()
     size_mb = len(file_bytes) / (1024 * 1024)
     if size_mb > MAX_UPLOAD_SIZE_MB:
         raise HTTPException(

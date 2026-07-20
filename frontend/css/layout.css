@@ -537,9 +537,19 @@ header.app-header {
    browser's 3-button nav / gesture navigation strip and keyboard.
    The --composer-bottom-offset is set by adjustComposerPosition()
    in app.js. It calculates the exact CSS bottom value so the
-   composer always sits just above the bottom chrome or keyboard. */
+   composer always sits just above the bottom chrome or keyboard.
+
+   CRITICAL: We use `position: fixed` on mobile instead of `absolute`.
+   `position: absolute` measures from the containing block (main.canvas
+   which is 100vh) which includes bottom chrome. `position: fixed`
+   measures from the ACTUAL viewport — matching what visualViewport
+   reports. This is why `window.innerHeight - vv.height` works correctly
+   as a CSS `bottom` value: the composer is fixed to the viewport,
+   and `bottom: (innerHeight - vv.height) + gap` positions it just
+   above the visible bottom edge. */
 @media (max-width: 1024px) {
     .composer-container {
+        position: fixed !important;
         bottom: var(--composer-bottom-offset, 24px);
         will-change: bottom;
         transition: bottom 0.05s linear;
@@ -565,6 +575,7 @@ header.app-header {
     main.content-canvas {
         grid-column: 1 / -1 !important;
         width: 100% !important;
+        height: 100% !important;
         display: flex !important;
         margin-left: 0 !important;
         margin-right: 0 !important;

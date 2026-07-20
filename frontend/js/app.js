@@ -191,85 +191,65 @@ if (typeof MutationObserver !== 'undefined') {
 
 /**
  * Universal Mobile Composer Bottom Offset — Mobile First
- * Precisely positions the chat composer above the mobile browser's
- * bottom navigation chrome (3-button nav bar, gesture navigation strip,
- * home indicator, etc.) and above the keyboard when it appears.
+ * Positions the chat composer reliably above the mobile browser's
+ * bottom navigation chrome (3-button nav / gesture strip) AND
+ * above the keyboard when it appears.
  *
- * KEY INSIGHT: The user noticed that tapping the (half-cut-off) chat box
- * brings up the keyboard AND fully reveals the composer. That proves:
- *   - window.visualViewport gives the EXACT visible area
- *   - When keyboard appears, visualViewport shrinks to the space ABOVE it
- *   - When keyboard is hidden, visualViewport height = visible area minus
- *     bottom chrome (address bar + bottom nav)
+ * How this works (proven approach used by WhatsApp, Telegram, etc.):
  *
- * This function uses a SELF-CALIBRATING approach:
- *   1. It measures how far the composer's DESIRED position is from the
- *      visualViewport's bottom edge.
- *   2. When keyboard opens, it keeps the composer just 8px above it.
- *   3. When keyboard closes, it keeps the composer 16px above the bottom
- *      chrome (which is the visualViewport bottom edge).
+ * The composer uses `position: absolute` inside main.content-canvas
+ * which has height = 100vh. The CSS `bottom` property measures from
+ * the bottom of that containing block.
  *
- * No heuristic guessing of "address bar vs bottom nav" needed.
+ * On mobile, the "bottom chrome" (nav bar / gesture strip) occupies
+ * the space from `visualViewport.height` to `window.innerHeight`.
+ * So: bottomChromeHeight = window.innerHeight - visualViewport.height
+ *
+ * When keyboard is CLOSED:
+ *   → visualViewport.height ≈ innerHeight - bottomChromeHeight
+ *   → bottomChromeHeight = innerHeight - vv.height
+ *   → composer bottom = bottomChromeHeight + 12px (breathing room)
+ *
+ * When keyboard is OPEN:
+ *   → visualViewport shrinks to space ABOVE the keyboard
+ *   → vv.height = innerHeight - bottomChromeHeight - keyboardHeight
+ *   → bottomChromeHeight + keyboardHeight = innerHeight - vv.height
+ *   → composer bottom = (innerHeight - vv.height) + 8px (tight gap)
+ *
+ * NO guesswork about "how tall is the address bar vs bottom nav".
+ * We simply measure what the browser tells us is visible.
  */
 function adjustComposerPosition() {
     if (window.innerWidth >= 1024) return; // Desktop unaffected
 
     const composer = document.querySelector('.composer-container');
-    const chatContainer = document.getElementById('chat-thread-container');
     if (!composer) return;
 
-    // Use the visual viewport if available (all modern mobile browsers).
     if (window.visualViewport) {
         const vv = window.visualViewport;
 
-        // The composer needs to sit at: visualViewport.bottom - offset
-        // visualViewport.bottom gives us the pixel position of the bottom
-        // of the visible area relative to the layout viewport (document).
-        //
-        // When keyboard is OPEN: vv.height is small, vv.bottom is just above keyboard.
-        //   → Position composer at vv.bottom - 8px (tight gap, no wasted space).
-        //
-        // When keyboard is CLOSED: vv.height ≈ viewport minus bottom chrome.
-        //   → Position composer at vv.bottom - (bottomNavHeight + 16px).
-        //   → bottomNavHeight is measured ONCE from the difference between
-        //     the composer's desired bottom and the visualViewport bottom.
+        // The space from the visible bottom edge of visualViewport to the full layout bottom.
+        // Accounts for bottom nav chrome, keyboard height, and any top viewport scroll offsets.
+        const spaceBelowViewport = Math.max(0, window.innerHeight - (vv.height + (vv.offsetTop || 0)));
 
-        // Detect if keyboard is likely open: vv.height is significantly smaller
-        // than window.innerHeight. Threshold: 40% reduction indicates keyboard.
-        const isKeyboardOpen = vv.height < window.innerHeight * 0.6;
-
-        // Calculate where the composer SHOULD be (its natural bottom edge
-        // if it were positioned normally at the very bottom of the layout).
-        // On mobile, the layout viewport's bottom edge = document.documentElement.clientHeight.
-        // The composer's natural bottom = clientHeight (bottom of screen).
-        const layoutBottom = document.documentElement.clientHeight;
+        // Detect if keyboard is open: if more than ~80px is hidden below visualViewport
+        const isKeyboardOpen = spaceBelowViewport > 80;
 
         if (isKeyboardOpen) {
-            // KEYBOARD IS OPEN:
-            // Position composer just 8px above the keyboard.
-            // vv.offsetTop gives the distance from the top of the layout
-            // viewport to the top of the visual viewport.
-            // vv.height is the height of the visible area above keyboard.
-            // So: keyboard top edge = vv.offsetTop + vv.height
-            // Composer bottom = keyboard top - 8px small gap for breathing room
-            // Convert to CSS bottom value = layoutBottom - (vv.offsetTop + vv.height) + 8
-            const composerBottom = (vv.offsetTop + vv.height) - 8;
-            const cssBottom = layoutBottom - composerBottom;
-            document.documentElement.style.setProperty('--composer-bottom-offset', `${cssBottom}px`);
+            // Keyboard is open — composer sits 8px above it.
+            document.documentElement.style.setProperty(
+                '--composer-bottom-offset',
+                `${spaceBelowViewport + 8}px`
+            );
         } else {
-            // KEYBOARD IS CLOSED:
-            // The bottom chrome (nav bar, gesture strip) occupies the space
-            // from vv.offsetTop + vv.height to layoutBottom.
-            // We want the composer to sit 16px above the bottom of the
-            // visual viewport (i.e., above the bottom chrome).
-            //
-            // Composer bottom edge = vv.offsetTop + vv.height - 16px
-            const composerBottom = (vv.offsetTop + vv.height) - 16;
-            const cssBottom = layoutBottom - composerBottom;
-            document.documentElement.style.setProperty('--composer-bottom-offset', `${cssBottom}px`);
+            // Keyboard is closed — composer sits 12px above bottom chrome.
+            document.documentElement.style.setProperty(
+                '--composer-bottom-offset',
+                `${spaceBelowViewport + 12}px`
+            );
         }
     } else {
-        // Fallback for very old browsers without Visual Viewport API
+        // Fallback for browsers without Visual Viewport API
         document.documentElement.style.setProperty('--composer-bottom-offset', '72px');
     }
 }

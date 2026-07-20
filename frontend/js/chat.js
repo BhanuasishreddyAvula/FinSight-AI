@@ -178,10 +178,16 @@ const Chat = {
         this.scrollToBottom();
 
         try {
-            // Wait for any pending document uploads to finish indexing in the backend
-            // The skeleton shimmer loader is already on screen, so the user sees a seamless "thinking" state.
+            // Wait for any pending document uploads to finish indexing with a safety timeout
             if (App.uploadPromises && App.uploadPromises.length > 0) {
-                await Promise.all(App.uploadPromises);
+                try {
+                    await Promise.race([
+                        Promise.all(App.uploadPromises),
+                        new Promise(resolve => setTimeout(resolve, 15000))
+                    ]);
+                } catch (e) {
+                    console.warn("Upload promise wait warning:", e);
+                }
             }
 
             const requestPayload = {
@@ -411,18 +417,24 @@ const Chat = {
 
         if (active) {
             input.disabled = true;
+            if (sendBtn) {
+                sendBtn.disabled = true;
+                sendBtn.className = "w-9 h-9 rounded-full bg-copper text-void flex items-center justify-center cursor-not-allowed opacity-80 animate-pulse";
+            }
             input.placeholder = "FinSight AI is retrieving information and formulating answer...";
-            if (sendBtn) sendBtn.className = "w-11 h-11 rounded-full bg-copper text-void flex items-center justify-center cursor-not-allowed opacity-80 animate-pulse";
             if (icon) {
-                icon.className = 'material-symbols-outlined animate-spin';
+                icon.className = 'material-symbols-outlined animate-spin text-[20px]';
                 icon.textContent = 'sync';
             }
         } else {
             input.disabled = false;
-            input.placeholder = "Ask me anything about the sources...";
-            if (sendBtn) sendBtn.className = "w-11 h-11 rounded-full bg-amber text-void flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-md cursor-pointer";
+            if (sendBtn) {
+                sendBtn.disabled = false;
+                sendBtn.className = "w-9 h-9 rounded-full bg-[#D4AF37] text-white flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-md cursor-pointer";
+            }
+            input.placeholder = "Ask me anything...";
             if (icon) {
-                icon.className = 'material-symbols-outlined';
+                icon.className = 'material-symbols-outlined text-[20px]';
                 icon.textContent = 'arrow_upward';
             }
             // Only auto-focus on desktop (>=1024px) to prevent unwanted mobile software keyboard popups
@@ -460,10 +472,7 @@ const Chat = {
             // The total space below the chat messages = composer height + bottom offset + 16px extra
             const dynamicPadding = composerHeight + composerBottomOffset + 16;
             container.style.paddingBottom = `${dynamicPadding}px`;
-
-            requestAnimationFrame(() => {
-                container.scrollTop = container.scrollHeight;
-            });
+            container.scrollTop = container.scrollHeight;
         } else if (container) {
             container.scrollTop = container.scrollHeight;
         }

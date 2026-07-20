@@ -577,8 +577,18 @@ header.app-header {
         width: 100% !important;
         height: 100% !important;
         display: flex !important;
+        flex-direction: column !important;
+        overflow: hidden !important;
         margin-left: 0 !important;
         margin-right: 0 !important;
+    }
+
+    #chat-thread-container {
+        flex: 1 1 0% !important;
+        min-height: 0 !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        touch-action: pan-y !important;
     }
 
     .composer-container {
@@ -645,6 +655,9 @@ header.app-header {
    ═══════════════════════════════════════════════ */
 #chat-thread-container {
     padding-top: var(--chat-header-offset, 24px);
+    min-height: 0;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
 }
 
 /* ═══════════════════════════════════════════════

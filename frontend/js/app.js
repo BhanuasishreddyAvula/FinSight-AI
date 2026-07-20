@@ -300,6 +300,8 @@ if (document.readyState === 'complete' || document.readyState === 'interactive')
 
 // Global Application State Namespace
 const App = {
+    uploadPromises: [],
+
     // API Configurations - Auto-detect local vs cloud
     apiBase: (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
         ? window.location.origin

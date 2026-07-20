@@ -205,7 +205,8 @@ aside.sidebar .sidebar-toggle-btn span {
 
 /* ── Collapsed: Footer button — centered ── */
 aside.sidebar.collapsed .sidebar-footer button,
-aside.right-sidebar.collapsed .sidebar-footer button {
+aside.right-sidebar.collapsed .sidebar-footer button,
+aside.right-sidebar.collapsed .sidebar-footer-right button {
     justify-content: center !important;
     width: 36px !important;
     height: 36px !important;
@@ -214,7 +215,8 @@ aside.right-sidebar.collapsed .sidebar-footer button {
 
 /* Footer border */
 aside.sidebar.collapsed .sidebar-footer,
-aside.right-sidebar.collapsed .sidebar-footer {
+aside.right-sidebar.collapsed .sidebar-footer,
+aside.right-sidebar.collapsed .sidebar-footer-right {
     border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
     background: transparent !important;
     transition: none !important;
@@ -537,8 +539,11 @@ header.app-header {
 @media (max-width: 1024px) {
     body {
         grid-template-columns: 1fr !important;
+        height: 100vh !important;
+        /* Fallback */
+        height: calc(var(--vh, 1vh) * 100) !important;
     }
-    
+
     #tablet-tab-nav {
         display: flex !important;
     }
@@ -551,7 +556,7 @@ header.app-header {
         margin-left: 0 !important;
         margin-right: 0 !important;
     }
-    
+
     .composer-container {
         left: 0 !important;
         right: 0 !important;
@@ -563,7 +568,9 @@ header.app-header {
         position: fixed !important;
         top: 0;
         bottom: 0;
-        height: 100vh;
+        height: 100vh !important;
+        /* Fallback */
+        height: calc(var(--vh, 1vh) * 100) !important;
         z-index: 100 !important;
         width: 320px !important;
         max-width: 85vw !important;
@@ -582,12 +589,19 @@ header.app-header {
     }
 
     /* Hide old toggle buttons on tablet/mobile */
-    .sidebar-toggle-btn { display: none !important; }
+    .sidebar-toggle-btn {
+        display: none !important;
+    }
 
     /* Active Tab Visibility via Transforms and Backdrop */
-    body[data-active-tab="sidebar"] aside.sidebar { transform: translateX(0) !important; }
-    body[data-active-tab="right-sidebar"] aside.right-sidebar { transform: translateX(0) !important; }
-    
+    body[data-active-tab="sidebar"] aside.sidebar {
+        transform: translateX(0) !important;
+    }
+
+    body[data-active-tab="right-sidebar"] aside.right-sidebar {
+        transform: translateX(0) !important;
+    }
+
     body[data-active-tab="sidebar"] #tablet-sidebar-backdrop,
     body[data-active-tab="right-sidebar"] #tablet-sidebar-backdrop {
         opacity: 1 !important;
@@ -601,14 +615,72 @@ header.app-header {
 }
 
 /* ═══════════════════════════════════════════════
+   Dynamic Chat Offset — Mobile First Adjustment
+   Ensures first message appears right below the header
+   without being hidden behind it.
+   ═══════════════════════════════════════════════ */
+#chat-thread-container {
+    padding-top: var(--chat-header-offset, 24px);
+}
+
+/* ═══════════════════════════════════════════════
+   Mobile Sidebar Footer Fixes — Ensures Settings /
+   Live Diagnostics buttons are always visible and
+   never hidden below the viewport on any device.
+   ═══════════════════════════════════════════════ */
+
+/* Left sidebar: nav has flex-grow + overflow-y-auto but needs
+   min-height: 0 so it can shrink when content is tall enough
+   to push the footer out of view. This is the "scrollable
+   flexbox" gotcha fix. This applies globally but only makes a
+   difference on mobile where the footer could be pushed out. */
+aside.sidebar nav {
+    min-height: 0;
+}
+
+/* Right sidebar: the scrollable content area also needs the
+   same min-height: 0 treatment. The custom-scrollbar-right
+   class replaced the old full-container approach. */
+.custom-scrollbar-right {
+    flex-grow: 1;
+    overflow-y: auto;
+    min-height: 0;
+}
+
+.custom-scrollbar-right::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.custom-scrollbar-right::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.custom-scrollbar-right::-webkit-scrollbar-thumb {
+    background: rgba(232, 163, 61, 0.2);
+    border-radius: 10px;
+}
+
+.custom-scrollbar-right::-webkit-scrollbar-thumb:hover {
+    background: rgba(232, 163, 61, 0.4);
+}
+
+/* Right sidebar footer container — pinned to bottom of the
+   flex column (outside the scrollable area) with no-grow */
+.sidebar-footer-right {
+    flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════
    Responsive Overrides (Mobile View < 768px)
    ═══════════════════════════════════════════════ */
 @media (max-width: 768px) {
+
     /* Hide the floating tab nav on small screens */
     #tablet-tab-nav {
         display: none !important;
     }
-    
+
     /* Show the mobile header buttons (Menu & Docs) */
     .mobile-nav-btn {
         display: flex !important;

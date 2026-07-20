@@ -270,7 +270,7 @@
             </button>
         </div>
 
-        <div class="flex flex-col gap-2 flex-grow overflow-y-auto custom-scrollbar">
+        <div class="flex flex-col gap-2 flex-grow overflow-y-auto custom-scrollbar-right">
             <!-- Add Sources Button -->
             <button id="open-upload-btn"
                 class="group relative flex items-center gap-3 text-black transition-all px-2 py-2 cursor-pointer font-medium text-[13px] h-[36px] mb-4"
@@ -303,16 +303,16 @@
                     </div>
                 </div>
             </div>
+        </div>
 
-            <!-- Diagnostics Action -->
-            <div class="sidebar-footer mt-auto border-t border-white/5 pt-4 pb-2 flex flex-col gap-2">
-                <button id="open-diagnostics-btn" onclick="RightSidebar.openDiagnosticsModal()"
-                    class="flex items-center gap-3 text-[#E5E5E5] hover:bg-[#2A2A2A] transition-all rounded-lg px-2 py-2 cursor-pointer text-[13px] h-[36px] w-full"
-                    data-tooltip="Live Diagnostics" aria-label="Live Diagnostics" tabindex="0">
-                    <span class="material-symbols-outlined text-[20px]">analytics</span>
-                    <span class="sidebar-text">Live Diagnostics</span>
-                </button>
-            </div>
+        <!-- Diagnostics Action - Moved OUTSIDE scrollable container so it stays pinned at bottom -->
+        <div class="sidebar-footer-right border-t border-white/5 pt-4 pb-2 flex flex-col gap-2 shrink-0">
+            <button id="open-diagnostics-btn" onclick="RightSidebar.openDiagnosticsModal()"
+                class="flex items-center gap-3 text-[#E5E5E5] hover:bg-[#2A2A2A] transition-all rounded-lg px-2 py-2 cursor-pointer text-[13px] h-[36px] w-full"
+                data-tooltip="Live Diagnostics" aria-label="Live Diagnostics" tabindex="0">
+                <span class="material-symbols-outlined text-[20px]">analytics</span>
+                <span class="sidebar-text">Live Diagnostics</span>
+            </button>
         </div>
     </aside>
 

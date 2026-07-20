@@ -1,10 +1,183 @@
 /* app.js - Global State Management, Core Utilities, and Toast Notifications */
 
+/**
+ * Universal Mobile Viewport Fix
+ * Dynamically calculates the exact visible height (ignoring address/gesture bars)
+ * and sets a --vh CSS variable.
+ */
+function adjustMobileViewport() {
+    let vh = window.innerHeight * 0.01;
+    document.documentElement.style.setProperty('--vh', `${vh}px`);
+}
+window.addEventListener('resize', adjustMobileViewport);
+window.addEventListener('orientationchange', adjustMobileViewport);
+adjustMobileViewport();
+
+/**
+ * Universal Dynamic Chat Offset — Mobile First
+ * Calculates the exact height of the mobile header so chat messages
+ * always appear right below it, never hidden behind it.
+ * Works on EVERY mobile device by reading real DOM dimensions.
+ */
+function adjustChatOffset() {
+    const header = document.querySelector('.app-header');
+    const chatContainer = document.getElementById('chat-thread-container');
+    if (!header || !chatContainer) return;
+
+    // On desktop (>=1024px) the header is hidden, so use the fallback padding.
+    if (window.innerWidth >= 1024) {
+        document.documentElement.style.setProperty('--chat-header-offset', '24px');
+        return;
+    }
+
+    // On mobile: measure the header's actual rendered height.
+    // This accounts for safe-areas, notch heights, dynamic island, etc.
+    const headerRect = header.getBoundingClientRect();
+    const headerHeight = headerRect.height;
+
+    // Also account for any top padding the header may have that we want to preserve below it.
+    // Add a tiny breathing room (4px) so content doesn't stick exactly to the header bottom edge.
+    const offset = headerHeight + 4;
+
+    // Apply as CSS variable — this controls #chat-thread-container's padding-top.
+    document.documentElement.style.setProperty('--chat-header-offset', `${offset}px`);
+}
+
+// Recalculate on any event that could change header dimensions.
+window.addEventListener('resize', adjustChatOffset);
+window.addEventListener('orientationchange', () => {
+    // On orientation change, wait briefly for the browser to finish re-layout.
+    setTimeout(adjustChatOffset, 150);
+});
+window.addEventListener('load', adjustChatOffset);
+// Also watch the DOM in case the mobile nav buttons toggle visibility.
+if (typeof MutationObserver !== 'undefined') {
+    const headerObserver = new MutationObserver(adjustChatOffset);
+    const appHeader = document.querySelector('.app-header');
+    if (appHeader) {
+        headerObserver.observe(appHeader, {
+            attributes: true,
+            childList: true,
+            subtree: true
+        });
+    }
+}
+// Single-shot call on DOMContentLoaded in case init runs later.
+document.addEventListener('DOMContentLoaded', adjustChatOffset);
+// Also call it immediately in case DOM is already ready.
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    adjustChatOffset();
+}
+
+/**
+ * Universal Dynamic Sidebar Footer Fix — Mobile First
+ * Ensures the Settings button (left sidebar) and Live Diagnostics
+ * button (right sidebar) are ALWAYS visible and never pushed
+ * below the viewport on any mobile device.
+ *
+ * It works by measuring the sidebar's available inner height
+ * and dynamically applying a max-height to the scrollable
+ * content area so the footer stays pinned at the bottom.
+ */
+function adjustSidebarFooters() {
+    if (window.innerWidth >= 1024) return; // Desktop unaffected
+
+    const sidebars = [
+        {
+            sidebar: document.getElementById('app-sidebar'),
+            scrollable: document.querySelector('aside.sidebar nav'),
+            footer: document.querySelector('aside.sidebar .sidebar-footer'),
+            handle: 'left'
+        },
+        {
+            sidebar: document.getElementById('right-sidebar'),
+            scrollable: document.querySelector('.custom-scrollbar-right'),
+            footer: document.querySelector('.sidebar-footer-right'),
+            handle: 'right'
+        }
+    ];
+
+    sidebars.forEach(({ sidebar, scrollable, footer, handle }) => {
+        if (!sidebar || !scrollable || !footer) return;
+
+        // The sidebar might be off-screen (transform: translateX), but
+        // getBoundingClientRect still gives us proper dimensions.
+        // We need the sidebar's actual visible height on screen.
+        const sidebarRect = sidebar.getBoundingClientRect();
+        const sidebarHeight = sidebarRect.height;
+
+        // Measure the footer height
+        const footerRect = footer.getBoundingClientRect();
+        const footerHeight = footerRect.height || 52; // fallback ~52px
+
+        // Measure the header (brand area) inside the sidebar — the first flex child before the scrollable
+        // We use the first child of the sidebar as the "fixed top" area
+        const sidebarChildren = Array.from(sidebar.children);
+        let topFixedHeight = 0;
+        for (const child of sidebarChildren) {
+            if (child === scrollable || child === footer) break;
+            const childRect = child.getBoundingClientRect();
+            topFixedHeight += childRect.height;
+            // Account for margins/borders via computed style
+            const cs = window.getComputedStyle(child);
+            topFixedHeight += parseFloat(cs.marginBottom) || 0;
+        }
+
+        // Padding on the sidebar itself
+        const sidebarCS = window.getComputedStyle(sidebar);
+        const sidebarPaddingY = (parseFloat(sidebarCS.paddingTop) || 0) + (parseFloat(sidebarCS.paddingBottom) || 0);
+
+        // Available height for scrollable content = sidebar height - topFixed - footer - sidebar padding
+        const availableHeight = sidebarHeight - topFixedHeight - footerHeight - sidebarPaddingY;
+
+        // Apply as max-height to the scrollable container
+        scrollable.style.maxHeight = `${Math.max(availableHeight, 60)}px`; // minimum 60px
+    });
+}
+
+// Recalculate on any event that could change sidebar dimensions
+window.addEventListener('resize', adjustSidebarFooters);
+window.addEventListener('orientationchange', () => {
+    setTimeout(adjustSidebarFooters, 200);
+});
+window.addEventListener('load', adjustSidebarFooters);
+
+// Use MutationObserver to watch both sidebars for content changes
+if (typeof MutationObserver !== 'undefined') {
+    const sidebarObserver = new MutationObserver(() => {
+        requestAnimationFrame(adjustSidebarFooters);
+    });
+
+    const leftSidebar = document.getElementById('app-sidebar');
+    const rightSidebar = document.getElementById('right-sidebar');
+
+    if (leftSidebar) {
+        sidebarObserver.observe(leftSidebar, {
+            childList: true,
+            subtree: true,
+            attributes: false
+        });
+    }
+    if (rightSidebar) {
+        sidebarObserver.observe(rightSidebar, {
+            childList: true,
+            subtree: true,
+            attributes: false
+        });
+    }
+}
+
+// Initial call
+document.addEventListener('DOMContentLoaded', adjustSidebarFooters);
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    adjustSidebarFooters();
+}
+
 // Global Application State Namespace
 const App = {
     // API Configurations - Auto-detect local vs cloud
     apiBase: (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
-        ? window.location.origin 
+        ? window.location.origin
         : "https://finsight-ai-5nnb.onrender.com",
     config: {
         default_top_k: 5,
@@ -12,7 +185,7 @@ const App = {
         max_upload_size_mb: 25,
         allowed_extensions: [".txt", ".docx", ".pdf"]
     },
-    
+
     // RAG Settings (Syncs with localStorage & settings slider)
     settings: {
         topK: parseInt(localStorage.getItem('finsight_topk')) || 5,
@@ -40,7 +213,7 @@ const App = {
         // First things first, let's establish our session! 
         // If they already have one stored locally, we'll just pick up right where they left off.
         console.log("FinSight AI Initializing... Session ID:", this.sessionId);
-        
+
         // Next up, grab the dynamic config from our backend (things like file size limits)
         // so our frontend knows exactly what the server can handle.
         try {
@@ -48,7 +221,7 @@ const App = {
             if (res.ok) {
                 this.config = await res.json();
                 console.log("Loaded server configuration:", this.config);
-                
+
                 // If they haven't messed with the RAG parameters yet, let's load up the recommended defaults.
                 if (!localStorage.getItem('finsight_topk') && this.config.default_top_k) {
                     this.settings.topK = this.config.default_top_k;
@@ -63,7 +236,7 @@ const App = {
 
         // Render current session ID on header
         this.updateSessionHeader();
-        
+
         // Load recent sessions list
         HistoryManager.loadSessions();
     },
@@ -82,27 +255,27 @@ const App = {
             this.sessionId = 'session_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
         }
         localStorage.setItem('finsight_session_id', this.sessionId);
-        
+
         this.updateSessionHeader();
-        
+
         // Clear chat UI
         if (typeof Chat !== 'undefined') {
             Chat.resetChatUI();
         }
-        
+
         // Clear documents UI
         if (typeof Sidebar !== 'undefined') {
             Sidebar.sourcesList = [];
-            
+
             const container = document.getElementById('sources-list-container');
             if (container) container.innerHTML = '<div class="px-2 py-2 text-gray-500 text-sm sidebar-text">No sources yet</div>';
-            
+
             const docCount = document.getElementById('diag-doc-count');
             if (docCount) docCount.textContent = '0';
-            
+
             const diagDocs = document.getElementById('diag-docs-container');
             if (diagDocs) diagDocs.innerHTML = '<div class="text-center text-taupe/60 italic py-4 text-xs bg-white/[0.02] rounded-xl border border-white/5 border-dashed">No documents uploaded.</div>';
-            
+
             const diagChunks = document.getElementById('diag-chunks-container');
             if (diagChunks) diagChunks.innerHTML = `
                 <div class="flex flex-col items-center justify-center h-full gap-3 text-center py-12">
@@ -112,7 +285,7 @@ const App = {
                 </div>
             `;
         }
-        
+
         // Reload recent list silently (no skeletons)
         HistoryManager.loadSessions(false);
     },
@@ -148,7 +321,7 @@ const App = {
         // Create notification card
         const toast = document.createElement('div');
         toast.className = `glass-panel ${borderClass} w-max max-w-[320px] px-4 py-3 rounded-2xl relative shadow-lg pointer-events-auto animate-toast overflow-hidden`;
-        
+
         toast.innerHTML = `
             <div class="flex items-center gap-3">
                 <div class="w-6 h-6 rounded-full bg-void flex items-center justify-center shrink-0">
@@ -173,7 +346,7 @@ const App = {
         closeBtn.onclick = () => this.dismissToast(toast);
 
         const toastDuration = duration || this.config.toast_duration || 4000;
-        
+
         // Progress bar countdown
         const progress = toast.querySelector('.toast-progress');
         progress.style.transitionDuration = `${toastDuration}ms`;
@@ -264,46 +437,46 @@ const HistoryManager = {
     async loadSessions(showSkeletons = true) {
         const container = document.getElementById('sidebar-history-container');
         if (!container) return;
-        
+
         // Show skeletons immediately if requested
         if (showSkeletons) {
             this.renderSkeletons(container);
         }
-        
+
         try {
             const res = await fetch(`${App.apiBase}/api/query/sessions`);
             const data = await res.json();
-            
+
             if (data.status === 'success' && data.sessions.length > 0) {
                 container.innerHTML = '';
-                
+
                 data.sessions.forEach(session => {
                     const isActive = App.sessionId === session.session_id;
                     const el = document.createElement('div');
                     el.className = `sidebar-history-item ${isActive ? 'active' : ''}`;
                     el.dataset.id = session.session_id;
-                    
+
                     el.innerHTML = `
                         <span class="sidebar-history-item-text">${session.preview}</span>
                         <button class="sidebar-history-delete-btn" title="Delete conversation" aria-label="Delete conversation">
                             <span class="material-symbols-outlined text-[15px]">delete</span>
                         </button>
                     `;
-                    
+
                     // Click to load
                     el.onclick = (e) => {
                         // If delete button clicked, don't trigger load
                         if (e.target.closest('.sidebar-history-delete-btn')) return;
                         this.loadSession(session.session_id);
                     };
-                    
+
                     // Delete action
                     const deleteBtn = el.querySelector('.sidebar-history-delete-btn');
                     deleteBtn.onclick = (e) => {
                         e.stopPropagation();
                         this.deleteSession(session.session_id, el);
                     };
-                    
+
                     container.appendChild(el);
                 });
             } else {
@@ -322,7 +495,7 @@ const HistoryManager = {
             `;
         }
     },
-    
+
     async deleteSession(sessionId, element) {
         const isConfirmed = await App.confirm(
             "Delete this conversation log permanently? Uploaded files will be kept.",
@@ -331,13 +504,13 @@ const HistoryManager = {
             "Cancel"
         );
         if (!isConfirmed) return;
-        
+
         // ── Optimistic Update ──
         // Cache DOM state for rollback
         const parent = element.parentNode;
         const nextSibling = element.nextSibling;
         const wasActive = App.sessionId === sessionId;
-        
+
         // Trigger slide-out and hide immediately
         element.style.transition = "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)";
         element.style.opacity = "0";
@@ -345,7 +518,7 @@ const HistoryManager = {
         element.style.height = "0px";
         element.style.padding = "0px";
         element.style.margin = "0px";
-        
+
         const removeTimeout = setTimeout(() => {
             element.remove();
             if (parent && parent.children.length === 0) {
@@ -356,33 +529,33 @@ const HistoryManager = {
                 `;
             }
         }, 250);
-        
+
         if (wasActive) {
             App.startNewChat();
         }
-        
+
         // Removed optimistic toast per user request
-        
+
         try {
             const res = await fetch(`${App.apiBase}/api/query/sessions/${sessionId}`, {
                 method: 'DELETE'
             });
             const data = await res.json();
-            
+
             if (data.status !== 'success') {
                 throw new Error("Failed to delete conversation on server");
             }
         } catch (e) {
             console.error("Failed to delete session, rolling back:", e);
             clearTimeout(removeTimeout);
-            
+
             // Restore visual layout
             element.style.transform = "none";
             element.style.opacity = "1";
             element.style.height = "";
             element.style.padding = "";
             element.style.margin = "";
-            
+
             if (!element.parentNode && parent) {
                 if (parent.innerHTML.includes("No previous chats")) {
                     parent.innerHTML = '';
@@ -396,14 +569,14 @@ const HistoryManager = {
             App.showToast("Failed to delete conversation", "error");
         }
     },
-    
+
     async loadSession(sessionId) {
         if (App.sessionId === sessionId) return;
-        
+
         App.sessionId = sessionId;
         localStorage.setItem('finsight_session_id', sessionId);
         App.updateSessionHeader();
-        
+
         // Update active class immediately in sidebar for high-end feel
         const items = document.querySelectorAll('.sidebar-history-item');
         items.forEach(item => {
@@ -413,13 +586,13 @@ const HistoryManager = {
                 item.classList.remove('active');
             }
         });
-        
+
         // 1. Fetch History
         if (typeof Chat !== 'undefined') {
             Chat.resetChatUI(false);
             await Chat.loadChatHistory();
         }
-        
+
         // 2. Fetch Documents
         if (typeof Sidebar !== 'undefined') {
             await Sidebar.loadDocuments();

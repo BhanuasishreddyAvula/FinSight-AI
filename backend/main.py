@@ -68,15 +68,6 @@ async def serve_favicon():
     return FileResponse(os.path.join(FRONTEND_DIR, "index.html"), status_code=404)
 
 
-@app.get("/FinSight AI.png", include_in_schema=False)
-@app.get("/FinSight%20AI.png", include_in_schema=False)
-async def serve_logo():
-    logo_path = os.path.join(FRONTEND_DIR, "FinSight AI.png")
-    if os.path.exists(logo_path):
-        return FileResponse(logo_path, media_type="image/png")
-    return FileResponse(os.path.join(FRONTEND_DIR, "index.html"), status_code=404)
-
-
 @app.get("/api/health")
 async def health_check():
     return {"status": "ok", "service": "FinSight AI"}

@@ -203,51 +203,66 @@ const Chat = {
                 body: JSON.stringify(requestPayload)
             });
 
-            if (!response.ok) throw new Error(`Query failed with status ${response.status}`);
+            if (!response.ok) {
+                const err = new Error(`Query failed with status ${response.status}`);
+                err.status = response.status;
+                throw err;
+            }
 
             let hasInitializedResponse = false;
             let aiCard = null;
             let textNode = null;
 
-            // Read SSE chunks
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder('utf-8');
-            let buffer = '';
+            // Read SSE chunks with explicit reader lifecycle management
+            let reader = null;
             let rawAnswer = '';
 
-            while (true) {
-                const { value, done } = await reader.read();
-                if (done) break;
+            try {
+                reader = response.body.getReader();
+                const decoder = new TextDecoder('utf-8');
+                let buffer = '';
 
-                buffer += decoder.decode(value, { stream: true });
-                const lines = buffer.split('\n');
-                buffer = lines.pop();
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
 
-                for (const line of lines) {
-                    const cleaned = line.trim();
-                    if (!cleaned || cleaned === 'data: [DONE]') continue;
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop();
 
-                    if (cleaned.startsWith('data: ')) {
-                        try {
-                            const parsed = JSON.parse(cleaned.substring(6));
+                    for (const line of lines) {
+                        const cleaned = line.trim();
+                        if (!cleaned || cleaned === 'data: [DONE]') continue;
 
-                            if (parsed.type === 'token') {
-                                // Initialize the visual response card on first token
-                                if (!hasInitializedResponse) {
-                                    loader.remove();
-                                    aiCard = this.appendAIMessageCard();
-                                    textNode = aiCard.querySelector('.ai-text-target');
-                                    hasInitializedResponse = true;
+                        if (cleaned.startsWith('data: ')) {
+                            try {
+                                const parsed = JSON.parse(cleaned.substring(6));
+
+                                if (parsed.type === 'token') {
+                                    // Initialize the visual response card on first token
+                                    if (!hasInitializedResponse) {
+                                        if (loader && loader.parentNode) loader.remove();
+                                        aiCard = this.appendAIMessageCard();
+                                        textNode = aiCard.querySelector('.ai-text-target');
+                                        hasInitializedResponse = true;
+                                    }
+
+                                    rawAnswer += parsed.data;
+                                    textNode.innerHTML = this.formatAnswerHTML(rawAnswer) + '<span class="streaming-cursor"></span>';
+                                    this.scrollToBottom();
                                 }
-
-                                rawAnswer += parsed.data;
-                                textNode.innerHTML = this.formatAnswerHTML(rawAnswer) + '<span class="streaming-cursor"></span>';
-                                this.scrollToBottom();
+                            } catch (err) {
+                                console.error("SSE line parse error:", err, cleaned);
                             }
-                        } catch (err) {
-                            console.error("SSE line parse error:", err, cleaned);
                         }
                     }
+                }
+            } finally {
+                if (reader) {
+                    try {
+                        reader.cancel().catch(() => {});
+                        reader.releaseLock();
+                    } catch (e) {}
                 }
             }
 
@@ -255,7 +270,7 @@ const Chat = {
                 const cursor = textNode.querySelector('.streaming-cursor');
                 if (cursor) cursor.remove();
                 textNode.innerHTML = this.formatAnswerHTML(rawAnswer);
-            } else if (!hasInitializedResponse && loader) {
+            } else if (!hasInitializedResponse && loader && loader.parentNode) {
                 loader.remove();
             }
 
@@ -264,10 +279,10 @@ const Chat = {
             if (loader && loader.parentNode) {
                 loader.remove();
             }
-            const friendlyMsg = this.mapTechnicalErrorToUserMessage(err.message || String(err));
+            const friendlyMsg = this.mapTechnicalErrorToUserMessage(err.message || String(err), err.status);
             this.appendErrorCard(friendlyMsg);
         } finally {
-            // Centralized Recovery Path: Ensure input state & composer controls ALWAYS recover
+            // Centralized Recovery Path: Ensure input state & composer controls ALWAYS recover exactly once
             this.setComposerStreamingState(false);
             
             // Clean up any lingering streaming cursors if stream was aborted mid-flight
@@ -282,12 +297,25 @@ const Chat = {
     },
 
     /**
-     * Centralized Error Mapper: Translates technical exceptions, HTTP status codes,
-     * and backend errors into human-readable, professional user messages.
+     * Centralized Error Mapper: Translates HTTP status codes, network errors,
+     * and exceptions into human-readable, professional user messages.
      */
-    mapTechnicalErrorToUserMessage(rawError) {
+    mapTechnicalErrorToUserMessage(rawError, status = null) {
+        if (status === 429) {
+            return "Request limit reached. Please wait a few seconds before asking another question.";
+        }
+        if (status === 401 || status === 403) {
+            return "Authentication error. Please check your API key configuration in Settings.";
+        }
+        if (status === 500) {
+            return "The AI assistant is temporarily unavailable. Please retry in a few moments.";
+        }
+
         const errStr = String(rawError).toLowerCase();
 
+        if (errStr.includes('abort') || errStr.includes('cancelled')) {
+            return "Request was cancelled.";
+        }
         if (errStr.includes('429') || errStr.includes('rate limit')) {
             return "Request limit reached. Please wait a few seconds before asking another question.";
         }
@@ -397,7 +425,10 @@ const Chat = {
                 icon.className = 'material-symbols-outlined';
                 icon.textContent = 'arrow_upward';
             }
-            input.focus();
+            // Only auto-focus on desktop (>=1024px) to prevent unwanted mobile software keyboard popups
+            if (window.innerWidth >= 1024) {
+                input.focus();
+            }
         }
     },
 

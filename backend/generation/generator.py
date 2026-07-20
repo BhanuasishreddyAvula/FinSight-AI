@@ -25,7 +25,7 @@ async def stream_answer(prompt: str, api_key: str = None):
             "or provide one via the Settings panel."
         )
 
-    client = AsyncGroq(api_key=effective_key, timeout=30.0)
+    client = AsyncGroq(api_key=effective_key)
     completion = await client.chat.completions.create(
         model=GROQ_MODEL,
         messages=[{"role": "user", "content": prompt}],

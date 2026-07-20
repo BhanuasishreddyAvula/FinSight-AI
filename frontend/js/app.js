@@ -670,31 +670,25 @@ const HistoryManager = {
 
     async deleteSession(sessionId, element) {
         const isConfirmed = await App.confirm(
-            "Delete this conversation log permanently? Uploaded files will be kept.",
-            "Delete Chat",
-            "Delete",
+            "This conversation history will be permanently deleted.\n\nYour uploaded documents will remain available.",
+            "Delete Conversation?",
+            "Delete Conversation",
             "Cancel"
         );
         if (!isConfirmed) return;
 
-        // ── Optimistic Update ──
-        // Cache DOM state for rollback
-        const parent = element.parentNode;
-        const nextSibling = element.nextSibling;
         const wasActive = App.sessionId === sessionId;
 
-        // Trigger slide-out and hide immediately
+        // 1. Immediate Visual Feedback (Optimistic slide-out)
         element.style.transition = "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)";
         element.style.opacity = "0";
         element.style.transform = "translateX(-20px)";
-        element.style.height = "0px";
-        element.style.padding = "0px";
-        element.style.margin = "0px";
 
-        const removeTimeout = setTimeout(() => {
+        setTimeout(() => {
             element.remove();
-            if (parent && parent.children.length === 0) {
-                parent.innerHTML = `
+            const container = document.getElementById('sidebar-history-container');
+            if (container && container.children.length === 0) {
+                container.innerHTML = `
                     <div class="px-2 py-4 text-center text-gray-500 text-xs italic select-none">
                         No previous chats
                     </div>
@@ -703,12 +697,25 @@ const HistoryManager = {
         }, 250);
 
         if (wasActive) {
-            App.startNewChat();
+            // Switch to new session locally without triggering race condition with pending DELETE
+            const deviceId = typeof getDeviceId === 'function' ? getDeviceId() : 'unknown';
+            if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+                App.sessionId = 'dev_' + deviceId + '_session_' + crypto.randomUUID().replace(/-/g, '');
+            } else {
+                App.sessionId = 'dev_' + deviceId + '_session_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+            }
+            localStorage.setItem('finsight_session_id', App.sessionId);
+            App.updateSessionHeader();
+            if (typeof Chat !== 'undefined') Chat.resetChatUI();
+            if (typeof Sidebar !== 'undefined') {
+                Sidebar.sourcesList = [];
+                const sourcesContainer = document.getElementById('sources-list-container');
+                if (sourcesContainer) sourcesContainer.innerHTML = '<div class="px-2 py-2 text-gray-500 text-sm sidebar-text">No sources yet</div>';
+            }
         }
 
-        // Removed optimistic toast per user request
-
         try {
+            // 2. Perform backend DELETE request
             const res = await fetch(`${App.apiBase}/api/query/sessions/${sessionId}`, {
                 method: 'DELETE'
             });
@@ -717,28 +724,13 @@ const HistoryManager = {
             if (data.status !== 'success') {
                 throw new Error("Failed to delete conversation on server");
             }
+
+            // 3. Synchronize frontend with backend state AFTER DELETE has succeeded
+            await this.loadSessions(false);
         } catch (e) {
-            console.error("Failed to delete session, rolling back:", e);
-            clearTimeout(removeTimeout);
-
-            // Restore visual layout
-            element.style.transform = "none";
-            element.style.opacity = "1";
-            element.style.height = "";
-            element.style.padding = "";
-            element.style.margin = "";
-
-            if (!element.parentNode && parent) {
-                if (parent.innerHTML.includes("No previous chats")) {
-                    parent.innerHTML = '';
-                }
-                if (nextSibling) {
-                    parent.insertBefore(element, nextSibling);
-                } else {
-                    parent.appendChild(element);
-                }
-            }
+            console.error("Failed to delete session:", e);
             App.showToast("Failed to delete conversation", "error");
+            await this.loadSessions(false);
         }
     },
 

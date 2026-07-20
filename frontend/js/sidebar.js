@@ -340,10 +340,9 @@ const Sidebar = {
             if (!res.ok) throw new Error("Delete request failed.");
 
             await this.loadDocuments();
-            Chat.resetChatUI();
         } catch (err) {
             console.error("Delete error:", err);
-            App.showToast(`Failed to delete document: ${err.message}`, 'error');
+            App.showToast("Unable to delete document. Please try again.", 'error');
             this.loadDocuments();
         }
     },

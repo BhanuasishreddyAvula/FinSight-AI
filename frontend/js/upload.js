@@ -242,7 +242,7 @@ const Upload = {
         }
 
         // 3. Show success toast at the exact same millisecond
-        App.showToast(`"${response.filename}" successfully indexed into ${response.chunks_created} chunks.`, 'success');
+        App.showToast(`"${response.filename}" processed successfully and ready for questions.`, 'success');
         
         // 4. Fire and forget a background sync (optional but safe)
         if (typeof Sidebar !== 'undefined') {
@@ -252,7 +252,14 @@ const Upload = {
 
     // Ingestion failed
     failIngestionProgress(errorMsg, filename) {
-        App.showToast(`Ingestion failed for "${filename}": ${errorMsg}`, 'error');
+        let cleanMsg = errorMsg || "Ingestion failed.";
+        const lower = String(cleanMsg).toLowerCase();
+        if (lower.includes('network') || lower.includes('failed to fetch')) {
+            cleanMsg = "Unable to reach server. Please check your connection.";
+        } else if (lower.includes('500') || lower.includes('status 500') || lower.includes('internal server error')) {
+            cleanMsg = "Server busy. Please try uploading again in a few moments.";
+        }
+        App.showToast(`Upload incomplete for "${filename}": ${cleanMsg}`, 'error');
 
         if (typeof Sidebar !== 'undefined' && typeof Sidebar.removeShimmerCard === 'function') {
             Sidebar.removeShimmerCard(filename);

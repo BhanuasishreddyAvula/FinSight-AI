@@ -8,8 +8,8 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
 from core.limiter import limiter
-from core.config import RATE_LIMIT_QUERIES
-from api.schemas import QueryRequest, validate_id_string
+from core.config import RATE_LIMIT_QUERIES, COHERE_API_KEY
+from api.schemas import QueryRequest
 from retrieval.hybrid_retriever import retrieve
 from generation.prompt_builder import build_prompt, build_no_context_response
 from generation.generator import stream_answer
@@ -68,7 +68,7 @@ async def query_documents(request: Request, body: QueryRequest):
     except Exception as e:
         import traceback
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Retrieval failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Document retrieval failed.")
 
     # Step 3: Handle no-results case
     if not chunks:
@@ -95,8 +95,9 @@ async def query_documents(request: Request, body: QueryRequest):
                 full_answer_parts.append(token)
                 yield f"data: {json.dumps({'type': 'token', 'data': token})}\n\n"
         except Exception as e:
+            import traceback
             traceback.print_exc()
-            yield f"data: {json.dumps({'type': 'token', 'data': f'\\n\\n[Generation Error: {str(e)}]'})}\n\n"
+            yield f"data: {json.dumps({'type': 'token', 'data': '\\n\\nAn error occurred while generating the answer.'})}\n\n"
 
         # Save completed turn to Supabase memory
         full_answer = "".join(full_answer_parts)
@@ -111,22 +112,21 @@ async def query_documents(request: Request, body: QueryRequest):
 
 
 @router.get("/query/history")
-def get_chat_history(session_id: str):
+async def get_chat_history(session_id: str):
     """
     Retrieve conversation history turns for a session from Supabase Postgres.
     """
     try:
-        session_id = validate_id_string(session_id, "session_id")
         history = get_history(session_id)
         return {"status": "success", "history": history}
-    except ValueError as ve:
-        raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to load chat history: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="Failed to load chat history.")
 
 
 @router.get("/query/sessions")
-def get_sessions():
+async def get_sessions():
     """
     Retrieve all user sessions.
     """
@@ -134,16 +134,17 @@ def get_sessions():
         sessions = get_all_sessions()
         return {"status": "success", "sessions": sessions}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to load sessions: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="Failed to load sessions.")
 
 
 @router.delete("/query/sessions/{session_id}")
-def delete_user_session(session_id: str):
+async def delete_user_session(session_id: str):
     """
     Delete a specific conversation session, all its logs, and its documents.
     """
     try:
-        session_id = validate_id_string(session_id, "session_id")
         docs = get_documents_for_session(session_id)
         for doc in docs:
             doc_id = doc.get("doc_id")
@@ -167,7 +168,7 @@ def delete_user_session(session_id: str):
 
         delete_session(session_id)
         return {"status": "success", "message": f"Session {session_id} and its sources deleted successfully."}
-    except ValueError as ve:
-        raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to delete session: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="Failed to delete session.")

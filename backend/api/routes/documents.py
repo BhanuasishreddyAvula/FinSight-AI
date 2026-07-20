@@ -2,7 +2,7 @@
 documents.py — Document management endpoints.
 """
 from fastapi import APIRouter, HTTPException
-from api.schemas import DocumentListResponse, DocumentInfo, DeleteResponse
+from api.schemas import DocumentListResponse, DocumentInfo, DeleteResponse, validate_id_string
 from storage.supabase_client import get_documents_for_session, delete_document_metadata, delete_file
 from retrieval.vector_store import delete_document
 
@@ -10,13 +10,16 @@ router = APIRouter()
 
 
 @router.get("/documents", response_model=DocumentListResponse)
-async def list_documents(session_id: str):
+def list_documents(session_id: str):
     """
     List all documents uploaded in a session.
     Returns metadata from Supabase Postgres.
     """
     try:
+        session_id = validate_id_string(session_id, "session_id")
         docs = get_documents_for_session(session_id)
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -36,11 +39,17 @@ async def list_documents(session_id: str):
 
 
 @router.delete("/documents/{doc_id}", response_model=DeleteResponse)
-async def delete_document_endpoint(doc_id: str, session_id: str):
+def delete_document_endpoint(doc_id: str, session_id: str):
     """
     Delete a document: removes vectors from Pinecone + file from Supabase Storage
     + metadata row from Supabase Postgres.
     """
+    try:
+        doc_id = validate_id_string(doc_id, "doc_id")
+        session_id = validate_id_string(session_id, "session_id")
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+
     errors = []
 
     # 1. Delete vectors from Pinecone (namespace=session_id)
@@ -77,10 +86,16 @@ async def delete_document_endpoint(doc_id: str, session_id: str):
 
 
 @router.get("/documents/{doc_id}/chunks")
-async def get_document_chunks(doc_id: str, session_id: str):
+def get_document_chunks(doc_id: str, session_id: str):
     """
     Fetch all chunks for a document from Pinecone for diagnostic preview.
     """
+    try:
+        doc_id = validate_id_string(doc_id, "doc_id")
+        session_id = validate_id_string(session_id, "session_id")
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+
     try:
         from storage.supabase_client import get_document_metadata
         from retrieval.vector_store import fetch_document_chunks

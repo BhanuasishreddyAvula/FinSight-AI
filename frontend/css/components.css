@@ -386,6 +386,19 @@ textarea#chat-input::-webkit-scrollbar-thumb {
     transform: scale(1) translateY(0);
 }
 
+/* Responsive Mobile Dialog Polish */
+@media (max-width: 768px) {
+    .modal-card {
+        max-width: calc(100vw - 32px) !important;
+        max-height: calc(var(--vh, 1vh) * 88) !important;
+        padding: 24px 20px !important;
+        margin: 16px !important;
+        border-radius: 20px !important;
+        display: flex;
+        flex-direction: column;
+    }
+}
+
 /* ═══════════════════════════════════════════════
    Settings Modal Premium Styles & Micro-interactions
    ═══════════════════════════════════════════════ */

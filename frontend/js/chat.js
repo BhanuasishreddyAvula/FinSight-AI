@@ -255,21 +255,56 @@ const Chat = {
                 const cursor = textNode.querySelector('.streaming-cursor');
                 if (cursor) cursor.remove();
                 textNode.innerHTML = this.formatAnswerHTML(rawAnswer);
-            } else if (!hasInitializedResponse) {
+            } else if (!hasInitializedResponse && loader) {
                 loader.remove();
             }
 
         } catch (err) {
-            console.error("Query streaming error:", err);
-            loader.remove();
-            this.appendErrorCard(err.message);
+            console.error("[FinSight AI Engine] Query streaming error:", err);
+            if (loader && loader.parentNode) {
+                loader.remove();
+            }
+            const friendlyMsg = this.mapTechnicalErrorToUserMessage(err.message || String(err));
+            this.appendErrorCard(friendlyMsg);
         } finally {
+            // Centralized Recovery Path: Ensure input state & composer controls ALWAYS recover
             this.setComposerStreamingState(false);
+            
+            // Clean up any lingering streaming cursors if stream was aborted mid-flight
+            const remainingCursors = document.querySelectorAll('.streaming-cursor');
+            remainingCursors.forEach(c => c.remove());
+
             this.scrollToBottom();
             if (typeof HistoryManager !== 'undefined') {
                 HistoryManager.loadSessions(false);
             }
         }
+    },
+
+    /**
+     * Centralized Error Mapper: Translates technical exceptions, HTTP status codes,
+     * and backend errors into human-readable, professional user messages.
+     */
+    mapTechnicalErrorToUserMessage(rawError) {
+        const errStr = String(rawError).toLowerCase();
+
+        if (errStr.includes('429') || errStr.includes('rate limit')) {
+            return "Request limit reached. Please wait a few seconds before asking another question.";
+        }
+        if (errStr.includes('401') || errStr.includes('403') || errStr.includes('api key')) {
+            return "Authentication error. Please check your API key configuration in Settings.";
+        }
+        if (errStr.includes('500') || errStr.includes('status 500') || errStr.includes('internal server error')) {
+            return "The AI assistant is temporarily unavailable. Please retry in a few moments.";
+        }
+        if (errStr.includes('network') || errStr.includes('failed to fetch') || errStr.includes('offline')) {
+            return "Unable to reach the assistant server. Please check your network connection.";
+        }
+        if (errStr.includes('timeout')) {
+            return "The request timed out. Please try asking a shorter question or re-uploading the document.";
+        }
+
+        return "An unexpected issue occurred while generating your answer. Please try asking your question again.";
     },
 
     appendUserMessage(text, cascadeDelay = 0) {
@@ -318,9 +353,12 @@ const Chat = {
         const turn = document.createElement('div');
         turn.className = "flex justify-start w-full animate-fade-rise";
         turn.innerHTML = `
-            <div class="message-ai-response border-red-400/30 bg-red-400/5 rounded-2xl px-5 py-4">
-                <p class="text-sm text-red-300 font-body">Retrieval pipeline or model connection failed:</p>
-                <p class="text-xs text-red-200 mt-2 font-body bg-void/50 p-3 rounded border border-red-400/10">${message}</p>
+            <div class="message-ai-response border-amber/20 bg-amber/5 rounded-2xl px-5 py-4 max-w-2xl border">
+                <div class="flex items-center gap-2 text-amber text-sm font-semibold mb-1">
+                    <span class="material-symbols-outlined text-[18px]">info</span>
+                    <span>Assistant Notice</span>
+                </div>
+                <p class="text-xs text-taupe leading-relaxed font-body">${message}</p>
             </div>
         `;
         flow.appendChild(turn);

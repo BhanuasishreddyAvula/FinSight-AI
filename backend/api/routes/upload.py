@@ -8,11 +8,11 @@ import os
 from pathlib import Path
 
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Request
-from api.schemas import UploadResponse
+from api.schemas import UploadResponse, validate_id_string
 from ingestion.file_router import route_file
 from ingestion.embedder import embed_texts
-from retrieval.vector_store import upsert_chunks, verify_document_indexed
-from storage.supabase_client import upload_file, save_document_metadata, delete_file, save_parent_chunks
+from retrieval.vector_store import upsert_chunks, verify_document_indexed, delete_document
+from storage.supabase_client import upload_file, save_document_metadata, delete_file, save_parent_chunks, delete_document_metadata
 from core.config import ALLOWED_EXTENSIONS, MAX_UPLOAD_SIZE_MB, RATE_LIMIT_UPLOADS
 from core.limiter import limiter
 
@@ -25,6 +25,30 @@ MIME_MAP = {
 }
 
 
+def _rollback_ingestion(doc_id: str, session_id: str, storage_path: str):
+    """
+    Robust rollback for failed ingestion steps.
+    Cleans up raw Storage file, Pinecone vectors, and Postgres metadata/parents.
+    """
+    if storage_path:
+        try:
+            delete_file(storage_path)
+        except Exception as e:
+            print(f"[Rollback] Storage deletion failed for {storage_path}: {e}")
+
+    if doc_id and session_id:
+        try:
+            delete_document(doc_id=doc_id, session_id=session_id)
+        except Exception as e:
+            print(f"[Rollback] Vector deletion failed for {doc_id}: {e}")
+
+    if doc_id:
+        try:
+            delete_document_metadata(doc_id)
+        except Exception as e:
+            print(f"[Rollback] Metadata deletion failed for {doc_id}: {e}")
+
+
 @router.post("/upload", response_model=UploadResponse)
 @limiter.limit(lambda: RATE_LIMIT_UPLOADS)
 def upload_document(
@@ -35,13 +59,18 @@ def upload_document(
     """
     Upload and ingest a financial document.
 
-    1. Validates file type and size.
+    1. Validates session ID, file type, and size.
     2. Saves raw file to Supabase Storage.
     3. Parses and chunks the document.
-    4. Embeds chunks (dense) + encodes sparse BM25 vectors.
+    4. Embeds chunks (dense vectors).
     5. Upserts to Pinecone under namespace=session_id.
     6. Saves document metadata to Supabase Postgres.
     """
+    try:
+        session_id = validate_id_string(session_id, "session_id")
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+
     # Validate extension
     ext = Path(file.filename).suffix.lower()
     if ext not in ALLOWED_EXTENSIONS:
@@ -51,7 +80,6 @@ def upload_document(
         )
 
     # Read file bytes synchronously so FastAPI runs this route in an external threadpool
-    # (prevents blocking the main event loop and failing Render's health checks)
     file_bytes = file.file.read()
     size_mb = len(file_bytes) / (1024 * 1024)
     if size_mb > MAX_UPLOAD_SIZE_MB:
@@ -110,14 +138,11 @@ def upload_document(
         # Save parent chunks to Supabase Document Store
         save_parent_chunks(parents, doc_id)
 
-    except HTTPException:
-        raise
+    except HTTPException as he:
+        _rollback_ingestion(doc_id, session_id, storage_path)
+        raise he
     except Exception as e:
-        # Rollback: delete the orphaned file from Supabase Storage if ingestion fails
-        try:
-            delete_file(storage_path)
-        except Exception:
-            pass  # Suppress secondary failure
+        _rollback_ingestion(doc_id, session_id, storage_path)
         raise HTTPException(status_code=500, detail=f"Ingestion failed: {str(e)}")
     finally:
         if tmp_path and os.path.exists(tmp_path):

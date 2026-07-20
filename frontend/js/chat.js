@@ -367,16 +367,31 @@ const Chat = {
         const container = document.getElementById('chat-thread-container');
         const composer = document.querySelector('.composer-container');
         if (container && composer) {
-            // Read the dynamic composer bottom offset from CSS variable.
-            // On desktop this falls back to the default.
-            const composerBottomOffset = parseInt(
-                getComputedStyle(document.documentElement)
-                    .getPropertyValue('--composer-bottom-offset')
-            ) || 24; // fallback to 24px base spacing
+            // Calculate padding bottom based on the composer's actual position
+            // relative to the visual viewport bottom edge.
+            // This ensures the last message is always visible above the composer
+            // regardless of keyboard state or bottom chrome.
+            const composerHeight = composer.offsetHeight || 56;
 
-            const composerHeight = composer.offsetHeight;
-            const dynamicPadding = composerHeight + composerBottomOffset + 40;
+            // On mobile (<1024px): read the dynamic --composer-bottom-offset
+            // which is the exact CSS `bottom` value set by adjustComposerPosition().
+            // On desktop (>=1024px): use the standard 24px + safe-area fallback.
+            let composerBottomOffset;
+            if (window.innerWidth < 1024) {
+                composerBottomOffset = parseInt(
+                    getComputedStyle(document.documentElement)
+                        .getPropertyValue('--composer-bottom-offset')
+                ) || 24;
+            } else {
+                // Desktop: use the CSS calc(24px + env(safe-area-inset-bottom))
+                // We approximate this as ~40px for padding calculation.
+                composerBottomOffset = 40;
+            }
+
+            // The total space below the chat messages = composer height + bottom offset + 16px extra
+            const dynamicPadding = composerHeight + composerBottomOffset + 16;
             container.style.paddingBottom = `${dynamicPadding}px`;
+
             requestAnimationFrame(() => {
                 container.scrollTop = container.scrollHeight;
             });

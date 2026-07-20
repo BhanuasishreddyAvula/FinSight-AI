@@ -534,12 +534,15 @@ header.app-header {
 }
 
 /* Mobile override — dynamically pushes composer above
-   browser's 3-button nav / gesture navigation strip.
+   browser's 3-button nav / gesture navigation strip and keyboard.
    The --composer-bottom-offset is set by adjustComposerPosition()
-   in app.js and includes the base 24px spacing. */
+   in app.js. It calculates the exact CSS bottom value so the
+   composer always sits just above the bottom chrome or keyboard. */
 @media (max-width: 1024px) {
     .composer-container {
         bottom: var(--composer-bottom-offset, 24px);
+        will-change: bottom;
+        transition: bottom 0.05s linear;
     }
 }
 

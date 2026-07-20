@@ -191,75 +191,124 @@ if (typeof MutationObserver !== 'undefined') {
 
 /**
  * Universal Mobile Composer Bottom Offset — Mobile First
- * Detects the mobile browser's bottom navigation chrome (3-button nav,
- * gesture navigation strip, home indicator, etc.) and dynamically
- * pushes the chat composer above it so it's NEVER hidden behind the
- * browser's UI on ANY mobile device.
+ * Precisely positions the chat composer above the mobile browser's
+ * bottom navigation chrome (3-button nav bar, gesture navigation strip,
+ * home indicator, etc.) and above the keyboard when it appears.
  *
- * Uses the Visual Viewport API which tells us the exact visible area
- * excluding browser chrome, address bar, and bottom nav.
+ * KEY INSIGHT: The user noticed that tapping the (half-cut-off) chat box
+ * brings up the keyboard AND fully reveals the composer. That proves:
+ *   - window.visualViewport gives the EXACT visible area
+ *   - When keyboard appears, visualViewport shrinks to the space ABOVE it
+ *   - When keyboard is hidden, visualViewport height = visible area minus
+ *     bottom chrome (address bar + bottom nav)
+ *
+ * This function uses a SELF-CALIBRATING approach:
+ *   1. It measures how far the composer's DESIRED position is from the
+ *      visualViewport's bottom edge.
+ *   2. When keyboard opens, it keeps the composer just 8px above it.
+ *   3. When keyboard closes, it keeps the composer 16px above the bottom
+ *      chrome (which is the visualViewport bottom edge).
+ *
+ * No heuristic guessing of "address bar vs bottom nav" needed.
  */
 function adjustComposerPosition() {
     if (window.innerWidth >= 1024) return; // Desktop unaffected
 
     const composer = document.querySelector('.composer-container');
+    const chatContainer = document.getElementById('chat-thread-container');
     if (!composer) return;
 
-    let bottomNavHeight = 0;
-
-    // The Visual Viewport API is supported on all modern mobile browsers.
-    // It gives us the actual visible area excluding browser chrome.
+    // Use the visual viewport if available (all modern mobile browsers).
     if (window.visualViewport) {
-        // The difference between window.innerHeight and visualViewport.height
-        // is the total space taken by address bar + bottom nav chrome.
-        // We only care about the bottom chrome (nav bar / gesture strip).
-        // On most mobile browsers, this difference is ~48-80px.
-        const totalChrome = window.innerHeight - window.visualViewport.height;
+        const vv = window.visualViewport;
 
-        // The address bar typically takes ~40-56px at the top.
-        // The remaining height at the bottom is the bottom navigation chrome.
-        // We use a heuristic: bottom nav is typically between 0 and 80px.
-        // If totalChrome is small (< 40px), it's probably just the bottom
-        // nav without address bar interference (e.g., page fully scrolled).
-        // Otherwise, subtract ~50px estimated address bar height.
-        if (totalChrome > 40) {
-            bottomNavHeight = Math.max(0, totalChrome - 50);
+        // The composer needs to sit at: visualViewport.bottom - offset
+        // visualViewport.bottom gives us the pixel position of the bottom
+        // of the visible area relative to the layout viewport (document).
+        //
+        // When keyboard is OPEN: vv.height is small, vv.bottom is just above keyboard.
+        //   → Position composer at vv.bottom - 8px (tight gap, no wasted space).
+        //
+        // When keyboard is CLOSED: vv.height ≈ viewport minus bottom chrome.
+        //   → Position composer at vv.bottom - (bottomNavHeight + 16px).
+        //   → bottomNavHeight is measured ONCE from the difference between
+        //     the composer's desired bottom and the visualViewport bottom.
+
+        // Detect if keyboard is likely open: vv.height is significantly smaller
+        // than window.innerHeight. Threshold: 40% reduction indicates keyboard.
+        const isKeyboardOpen = vv.height < window.innerHeight * 0.6;
+
+        // Calculate where the composer SHOULD be (its natural bottom edge
+        // if it were positioned normally at the very bottom of the layout).
+        // On mobile, the layout viewport's bottom edge = document.documentElement.clientHeight.
+        // The composer's natural bottom = clientHeight (bottom of screen).
+        const layoutBottom = document.documentElement.clientHeight;
+
+        if (isKeyboardOpen) {
+            // KEYBOARD IS OPEN:
+            // Position composer just 8px above the keyboard.
+            // vv.offsetTop gives the distance from the top of the layout
+            // viewport to the top of the visual viewport.
+            // vv.height is the height of the visible area above keyboard.
+            // So: keyboard top edge = vv.offsetTop + vv.height
+            // Composer bottom = keyboard top - 8px small gap for breathing room
+            // Convert to CSS bottom value = layoutBottom - (vv.offsetTop + vv.height) + 8
+            const composerBottom = (vv.offsetTop + vv.height) - 8;
+            const cssBottom = layoutBottom - composerBottom;
+            document.documentElement.style.setProperty('--composer-bottom-offset', `${cssBottom}px`);
         } else {
-            bottomNavHeight = Math.max(0, totalChrome);
+            // KEYBOARD IS CLOSED:
+            // The bottom chrome (nav bar, gesture strip) occupies the space
+            // from vv.offsetTop + vv.height to layoutBottom.
+            // We want the composer to sit 16px above the bottom of the
+            // visual viewport (i.e., above the bottom chrome).
+            //
+            // Composer bottom edge = vv.offsetTop + vv.height - 16px
+            const composerBottom = (vv.offsetTop + vv.height) - 16;
+            const cssBottom = layoutBottom - composerBottom;
+            document.documentElement.style.setProperty('--composer-bottom-offset', `${cssBottom}px`);
         }
     } else {
-        // Fallback: on older devices, use a reasonable default of 48px
-        // which covers most 3-button nav bars and gesture strips.
-        bottomNavHeight = 48;
+        // Fallback for very old browsers without Visual Viewport API
+        document.documentElement.style.setProperty('--composer-bottom-offset', '72px');
     }
-
-    // Clamp between reasonable bounds
-    bottomNavHeight = Math.max(0, Math.min(bottomNavHeight, 100));
-
-    // Apply as CSS variable — composer-container uses this for mobile bottom offset.
-    // We add the base 24px spacing + the detected bottom nav height.
-    document.documentElement.style.setProperty('--composer-bottom-offset', `${bottomNavHeight + 24}px`);
 }
 
-// Recalculate whenever the viewport changes (orientation, scroll, address bar show/hide, etc.)
-window.addEventListener('resize', adjustComposerPosition);
-window.addEventListener('orientationchange', () => {
-    setTimeout(adjustComposerPosition, 200);
-});
+// Recalculate on EVERY visual viewport change (keyboard shows/hides, scroll,
+// address bar shows/hides, orientation change, etc.)
+if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', () => {
+        requestAnimationFrame(adjustComposerPosition);
+    });
+    window.visualViewport.addEventListener('scroll', () => {
+        requestAnimationFrame(adjustComposerPosition);
+    });
+} else {
+    // Fallback for browsers without Visual Viewport API
+    window.addEventListener('resize', adjustComposerPosition);
+    window.addEventListener('orientationchange', () => {
+        setTimeout(adjustComposerPosition, 300);
+    });
+}
+
+// Also recalculate on main events
 window.addEventListener('load', adjustComposerPosition);
 
-// The visual viewport `resize` event is the KEY event for detecting
-// address bar show/hide and bottom nav changes on mobile.
-if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', adjustComposerPosition);
-    window.visualViewport.addEventListener('scroll', adjustComposerPosition);
-}
-
-// Also update when the chat thread scrolls (address bar can hide/show on scroll)
+// Recalculate when chat thread scrolls (address bar can hide/show)
 const chatContainer = document.getElementById('chat-thread-container');
 if (chatContainer) {
     chatContainer.addEventListener('scroll', () => {
-        requestAnimationFrame(adjustComposerPosition);
+        if (window.visualViewport) {
+            requestAnimationFrame(adjustComposerPosition);
+        }
+    });
+}
+
+// Recalculate when the user interacts with the composer (in case it helps)
+const chatForm = document.getElementById('chat-form');
+if (chatForm) {
+    chatForm.addEventListener('focusin', () => {
+        setTimeout(adjustComposerPosition, 100);
     });
 }
 

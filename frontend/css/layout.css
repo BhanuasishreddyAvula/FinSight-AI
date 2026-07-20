@@ -533,6 +533,16 @@ header.app-header {
     z-index: 40;
 }
 
+/* Mobile override — dynamically pushes composer above
+   browser's 3-button nav / gesture navigation strip.
+   The --composer-bottom-offset is set by adjustComposerPosition()
+   in app.js and includes the base 24px spacing. */
+@media (max-width: 1024px) {
+    .composer-container {
+        bottom: var(--composer-bottom-offset, 24px);
+    }
+}
+
 /* ═══════════════════════════════════════════════
    Responsive Overrides
    ═══════════════════════════════════════════════ */

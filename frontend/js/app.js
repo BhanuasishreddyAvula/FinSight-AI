@@ -70,6 +70,28 @@ if (document.readyState === 'complete' || document.readyState === 'interactive')
 }
 
 /**
+ * Generate or retrieve a persistent device-level identifier.
+ * This is stored in localStorage and NEVER changes — it uniquely
+ * identifies this specific browser/device installation.
+ * Used to isolate sessions per device so that sessions from one
+ * device NEVER appear on another device.
+ */
+function getDeviceId() {
+    let deviceId = localStorage.getItem('finsight_device_id');
+    if (!deviceId) {
+        // Generate a compact unique ID (8 chars, alphanumeric)
+        const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+        let id = '';
+        for (let i = 0; i < 8; i++) {
+            id += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        deviceId = id;
+        localStorage.setItem('finsight_device_id', deviceId);
+    }
+    return deviceId;
+}
+
+/**
  * Universal Dynamic Sidebar Footer Fix — Mobile First
  * Ensures the Settings button (left sidebar) and Live Diagnostics
  * button (right sidebar) are ALWAYS visible and never pushed
@@ -167,10 +189,84 @@ if (typeof MutationObserver !== 'undefined') {
     }
 }
 
+/**
+ * Universal Mobile Composer Bottom Offset — Mobile First
+ * Detects the mobile browser's bottom navigation chrome (3-button nav,
+ * gesture navigation strip, home indicator, etc.) and dynamically
+ * pushes the chat composer above it so it's NEVER hidden behind the
+ * browser's UI on ANY mobile device.
+ *
+ * Uses the Visual Viewport API which tells us the exact visible area
+ * excluding browser chrome, address bar, and bottom nav.
+ */
+function adjustComposerPosition() {
+    if (window.innerWidth >= 1024) return; // Desktop unaffected
+
+    const composer = document.querySelector('.composer-container');
+    if (!composer) return;
+
+    let bottomNavHeight = 0;
+
+    // The Visual Viewport API is supported on all modern mobile browsers.
+    // It gives us the actual visible area excluding browser chrome.
+    if (window.visualViewport) {
+        // The difference between window.innerHeight and visualViewport.height
+        // is the total space taken by address bar + bottom nav chrome.
+        // We only care about the bottom chrome (nav bar / gesture strip).
+        // On most mobile browsers, this difference is ~48-80px.
+        const totalChrome = window.innerHeight - window.visualViewport.height;
+
+        // The address bar typically takes ~40-56px at the top.
+        // The remaining height at the bottom is the bottom navigation chrome.
+        // We use a heuristic: bottom nav is typically between 0 and 80px.
+        // If totalChrome is small (< 40px), it's probably just the bottom
+        // nav without address bar interference (e.g., page fully scrolled).
+        // Otherwise, subtract ~50px estimated address bar height.
+        if (totalChrome > 40) {
+            bottomNavHeight = Math.max(0, totalChrome - 50);
+        } else {
+            bottomNavHeight = Math.max(0, totalChrome);
+        }
+    } else {
+        // Fallback: on older devices, use a reasonable default of 48px
+        // which covers most 3-button nav bars and gesture strips.
+        bottomNavHeight = 48;
+    }
+
+    // Clamp between reasonable bounds
+    bottomNavHeight = Math.max(0, Math.min(bottomNavHeight, 100));
+
+    // Apply as CSS variable — composer-container uses this for mobile bottom offset.
+    // We add the base 24px spacing + the detected bottom nav height.
+    document.documentElement.style.setProperty('--composer-bottom-offset', `${bottomNavHeight + 24}px`);
+}
+
+// Recalculate whenever the viewport changes (orientation, scroll, address bar show/hide, etc.)
+window.addEventListener('resize', adjustComposerPosition);
+window.addEventListener('orientationchange', () => {
+    setTimeout(adjustComposerPosition, 200);
+});
+window.addEventListener('load', adjustComposerPosition);
+
+// The visual viewport `resize` event is the KEY event for detecting
+// address bar show/hide and bottom nav changes on mobile.
+if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', adjustComposerPosition);
+    window.visualViewport.addEventListener('scroll', adjustComposerPosition);
+}
+
+// Also update when the chat thread scrolls (address bar can hide/show on scroll)
+const chatContainer = document.getElementById('chat-thread-container');
+if (chatContainer) {
+    chatContainer.addEventListener('scroll', () => {
+        requestAnimationFrame(adjustComposerPosition);
+    });
+}
+
 // Initial call
-document.addEventListener('DOMContentLoaded', adjustSidebarFooters);
+document.addEventListener('DOMContentLoaded', adjustComposerPosition);
 if (document.readyState === 'complete' || document.readyState === 'interactive') {
-    adjustSidebarFooters();
+    adjustComposerPosition();
 }
 
 // Global Application State Namespace
@@ -193,13 +289,19 @@ const App = {
     },
 
     // Session Management (UUID persists across page reloads)
+    // Each session is prefixed with the device_id to isolate sessions
+    // per device. This prevents sessions from one device leaking to
+    // another device when the backend returns ALL sessions globally.
+    // Format: dev_{device_id}_session_{uuid}
     sessionId: (() => {
         let sid = localStorage.getItem('finsight_session_id');
-        if (!sid) {
+        if (!sid || !sid.startsWith('dev_')) {
+            // Generate a new device-scoped session
+            const deviceId = typeof getDeviceId === 'function' ? getDeviceId() : 'unknown';
             if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-                sid = 'session_' + crypto.randomUUID().replace(/-/g, '');
+                sid = 'dev_' + deviceId + '_session_' + crypto.randomUUID().replace(/-/g, '');
             } else {
-                sid = 'session_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+                sid = 'dev_' + deviceId + '_session_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
             }
             localStorage.setItem('finsight_session_id', sid);
         }
@@ -249,10 +351,11 @@ const App = {
     },
 
     startNewChat() {
+        const deviceId = typeof getDeviceId === 'function' ? getDeviceId() : 'unknown';
         if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-            this.sessionId = 'session_' + crypto.randomUUID().replace(/-/g, '');
+            this.sessionId = 'dev_' + deviceId + '_session_' + crypto.randomUUID().replace(/-/g, '');
         } else {
-            this.sessionId = 'session_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+            this.sessionId = 'dev_' + deviceId + '_session_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
         }
         localStorage.setItem('finsight_session_id', this.sessionId);
 
@@ -434,6 +537,21 @@ const HistoryManager = {
         }
     },
 
+    // Derive the device prefix from the current session to filter sessions
+    // belonging to this device only. Sessions from other devices are never shown.
+    getDevicePrefix() {
+        const sid = App.sessionId;
+        if (sid && sid.startsWith('dev_')) {
+            // Format: dev_{device_id}_session_{uuid}
+            // Extract: dev_{device_id}
+            const parts = sid.split('_');
+            if (parts.length >= 3) {
+                return 'dev_' + parts[1];
+            }
+        }
+        return null;
+    },
+
     async loadSessions(showSkeletons = true) {
         const container = document.getElementById('sidebar-history-container');
         if (!container) return;
@@ -448,9 +566,34 @@ const HistoryManager = {
             const data = await res.json();
 
             if (data.status === 'success' && data.sessions.length > 0) {
+                // Filter sessions to only show those belonging to THIS device
+                const devicePrefix = this.getDevicePrefix();
+                let filteredSessions = data.sessions;
+
+                if (devicePrefix) {
+                    filteredSessions = data.sessions.filter(session =>
+                        session.session_id && session.session_id.startsWith(devicePrefix)
+                    );
+                } else {
+                    // Old sessions without device prefix — only show if they match
+                    // the current session (which means they were created before this update)
+                    filteredSessions = data.sessions.filter(session =>
+                        session.session_id === App.sessionId
+                    );
+                }
+
+                if (filteredSessions.length === 0) {
+                    container.innerHTML = `
+                        <div class="px-2 py-4 text-center text-gray-500 text-xs italic select-none">
+                            No previous chats
+                        </div>
+                    `;
+                    return;
+                }
+
                 container.innerHTML = '';
 
-                data.sessions.forEach(session => {
+                filteredSessions.forEach(session => {
                     const isActive = App.sessionId === session.session_id;
                     const el = document.createElement('div');
                     el.className = `sidebar-history-item ${isActive ? 'active' : ''}`;

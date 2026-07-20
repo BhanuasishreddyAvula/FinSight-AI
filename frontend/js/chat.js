@@ -135,12 +135,13 @@ const Chat = {
     // Clears conversation history — creates a fresh session
     clearHistory() {
         localStorage.removeItem('finsight_session_id');
+        const deviceId = typeof getDeviceId === 'function' ? getDeviceId() : 'unknown';
         App.sessionId = (() => {
             let sid;
             if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-                sid = 'session_' + crypto.randomUUID().replace(/-/g, '');
+                sid = 'dev_' + deviceId + '_session_' + crypto.randomUUID().replace(/-/g, '');
             } else {
-                sid = 'session_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+                sid = 'dev_' + deviceId + '_session_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
             }
             localStorage.setItem('finsight_session_id', sid);
             return sid;
@@ -366,8 +367,15 @@ const Chat = {
         const container = document.getElementById('chat-thread-container');
         const composer = document.querySelector('.composer-container');
         if (container && composer) {
+            // Read the dynamic composer bottom offset from CSS variable.
+            // On desktop this falls back to the default.
+            const composerBottomOffset = parseInt(
+                getComputedStyle(document.documentElement)
+                    .getPropertyValue('--composer-bottom-offset')
+            ) || 24; // fallback to 24px base spacing
+
             const composerHeight = composer.offsetHeight;
-            const dynamicPadding = composerHeight + 64;
+            const dynamicPadding = composerHeight + composerBottomOffset + 40;
             container.style.paddingBottom = `${dynamicPadding}px`;
             requestAnimationFrame(() => {
                 container.scrollTop = container.scrollHeight;

@@ -448,29 +448,27 @@ const Chat = {
         const container = document.getElementById('chat-thread-container');
         const composer = document.querySelector('.composer-container');
         if (container && composer) {
-            // Calculate padding bottom based on the composer's actual position
-            // relative to the visual viewport bottom edge.
-            // This ensures the last message is always visible above the composer
-            // regardless of keyboard state or bottom chrome.
-            const composerHeight = composer.offsetHeight || 56;
+            // Measure actual rendered bounding box height of the composer
+            const composerHeight = composer.getBoundingClientRect().height || composer.offsetHeight || 56;
 
             // On mobile (<1024px): read the dynamic --composer-bottom-offset
-            // which is the exact CSS `bottom` value set by adjustComposerPosition().
-            // On desktop (>=1024px): use the standard 24px + safe-area fallback.
+            // set by adjustComposerPosition() and apply 48px clearance for gesture nav bar.
+            // On desktop (>=1024px): keep the standard 16px clearance.
             let composerBottomOffset;
+            let extraClearance;
+
             if (window.innerWidth < 1024) {
                 composerBottomOffset = parseInt(
                     getComputedStyle(document.documentElement)
                         .getPropertyValue('--composer-bottom-offset')
                 ) || 24;
+                extraClearance = 48; // Mobile: clearance for composer card + Android gesture strip
             } else {
-                // Desktop: use the CSS calc(24px + env(safe-area-inset-bottom))
-                // We approximate this as ~40px for padding calculation.
                 composerBottomOffset = 40;
+                extraClearance = 16; // Desktop: unchanged standard clearance
             }
 
-            // The total space below the chat messages = composer height + bottom offset + 16px extra
-            const dynamicPadding = composerHeight + composerBottomOffset + 16;
+            const dynamicPadding = composerHeight + composerBottomOffset + extraClearance;
             container.style.paddingBottom = `${dynamicPadding}px`;
             container.scrollTop = container.scrollHeight;
         } else if (container) {

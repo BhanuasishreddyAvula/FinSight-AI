@@ -39,8 +39,10 @@ _client = None
 def get_supabase_client() -> Client:
     """Return a cached Supabase client instance to ensure fast queries and thread safety."""
     global _client
-    if _client is None:
+    from core.config import SUPABASE_URL, SUPABASE_KEY
+    if _client is None or getattr(_client, "_auth_key_ref", None) != SUPABASE_KEY:
         _client = create_client(SUPABASE_URL, SUPABASE_KEY)
+        _client._auth_key_ref = SUPABASE_KEY
     return _client
 
 

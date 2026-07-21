@@ -30,7 +30,7 @@ EMBEDDING_DIMENSION: int = int(os.getenv("EMBEDDING_DIMENSION", "1024"))
 
 # ── Supabase ─────────────────────────────────────────────────────────────────
 SUPABASE_URL: str = os.getenv("SUPABASE_URL", "")
-SUPABASE_KEY: str = os.getenv("SUPABASE_KEY", "")
+SUPABASE_KEY: str = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_KEY", "")
 SUPABASE_BUCKET: str = os.getenv("SUPABASE_BUCKET", "finsight-documents")
 
 # ── Chunking ─────────────────────────────────────────────────────────────────

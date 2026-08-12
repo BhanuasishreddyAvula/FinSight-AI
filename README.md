@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="frontend/static/favicon.png" alt="FinSight AI Logo" width="120" height="120">
+  <img src="frontend/FinSight AI.png" alt="FinSight AI Logo" width="120" height="120">
   
   # FinSight AI 🚀
   
